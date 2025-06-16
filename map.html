@@ -1,0 +1,2567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        MapBot
+    </title>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <script src="https://unpkg.com/rbush@3.0.1/rbush.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.css" rel="stylesheet">
+    <link href="style.css" rel="stylesheet">
+</head>
+<body>
+    <div class="mode-checkbox-container">
+        <label class="slider-label">
+            <input type="radio" id="weight-checkbox" name="mode" value="weight">
+            <span class="slider"></span>
+            contribution
+        </label>
+        <!-- <label class="slider-label">
+            <input type="radio" id="score-checkbox" name="mode" value="score">
+            <span class="slider"></span>
+            avg score;
+        </label>
+        <label class="slider-label">
+            <input type="radio" id="population-checkbox" name="mode" value="population">
+            <span class="slider"></span>
+            avg active population;
+        </label> -->
+        <label class="slider-label">
+            <input type="radio" id="density-checkbox" name="mode" value="density">
+            <span class="slider"></span>
+            engagement
+        </label>
+    </div>
+
+    <div id="stats-container" class="stats-container">
+        <div class="stats-title">Stats 📊</div>
+        <div class="stat-item">
+            <div>zips: </div> 
+            <div id="total-zips">0</div>
+        </div>
+        <div class="stat-item">
+            <div>contribution: </div> 
+            <div id="total-weight">0</div>
+        </div>
+        <div class="stat-item">
+            <div>avg contribution: </div> 
+            <div id="avg-weight">0</div>
+        </div>
+        <div class="stat-item">
+            <div>avg engagement:</div> 
+            <div id="total-engagement">0</div>
+        </div>
+        <!-- <div class="stat-item">
+            <div>avg active population;: </div> 
+            <div id="total-population">0</div>
+        </div>
+        <div class="stat-item">
+            <div>avg score: </div> 
+            <div id="total-score">0</div>
+        </div> -->
+    </div>
+
+     <div class="input-container">
+        <div class="input-wrapper">
+            <textarea 
+                id="promptInput" 
+                placeholder="Ask Givsly..." 
+                rows="1"
+            ></textarea>
+                <button class="send-button" id="sendButton">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="29" width="29" viewBox="0 0 640 512"> <path fill="#383838" 
+                        d="M320 0c17.7 0 32 14.3 32 32l0 64 120 0c39.8 0 72 32.2 72 72l0 272c0 39.8-32.2 72-72 72l-304 0c-39.8 0-72-32.2-72-72l0-272c0-39.8 32.2-72 72-72l120 0 0-64c0-17.7 14.3-32 32-32zM208 384c-8.8 0-16 7.2-16 16s7.2 16 16 16l32 0c8.8 0 16-7.2 16-16s-7.2-16-16-16l-32 0zm96 0c-8.8 0-16 7.2-16 16s7.2 16 16 16l32 0c8.8 0 16-7.2 16-16s-7.2-16-16-16l-32 0zm96 0c-8.8 0-16 7.2-16 16s7.2 16 16 16l32 0c8.8 0 16-7.2 16-16s-7.2-16-16-16l-32 0zM264 256a40 40 0 1 0 -80 0 40 40 0 1 0 80 0zm152 40a40 40 0 1 0 0-80 40 40 0 1 0 0 80zM48 224l16 0 0 192-16 0c-26.5 0-48-21.5-48-48l0-96c0-26.5 21.5-48 48-48zm544 0c26.5 0 48 21.5 48 48l0 96c0 26.5-21.5 48-48 48l-16 0 0-192 16 0z"/>
+                    </svg>
+                </button>
+            </div>
+        <button class="clear-prompt-button" id="clearPromptButton">Clear</button>
+    </div>
+
+    <div id="message" class="error-message"></div>
+    <div id="map"></div>
+
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoiZ2l2c2x5IiwiYSI6ImNsdGRpNmFzNDAybWkyd3JuNnRreTZoNDEifQ.Ls8coxMMl0dr0vqxNE8B-Q';
+
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v11', 
+            center: [-95, 37],
+            zoom: 3,
+            maxZoom: 18
+        });
+
+        const US_STATES_MAP = {
+            "AL": "Alabama",
+            "AK": "Alaska",
+            "AZ": "Arizona",
+            "AR": "Arkansas",
+            "CA": "California",
+            "CO": "Colorado",
+            "CT": "Connecticut",
+            "DE": "Delaware",
+            "FL": "Florida",
+            "GA": "Georgia",
+            "HI": "Hawaii",
+            "ID": "Idaho",
+            "IL": "Illinois",
+            "IN": "Indiana",
+            "IA": "Iowa",
+            "KS": "Kansas",
+            "KY": "Kentucky",
+            "LA": "Louisiana",
+            "ME": "Maine",
+            "MD": "Maryland",
+            "MA": "Massachusetts",
+            "MI": "Michigan",
+            "MN": "Minnesota",
+            "MS": "Mississippi",
+            "MO": "Missouri",
+            "MT": "Montana",
+            "NE": "Nebraska",
+            "NV": "Nevada",
+            "NH": "New Hampshire",
+            "NJ": "New Jersey",
+            "NM": "New Mexico",
+            "NY": "New York",
+            "NC": "North Carolina",
+            "ND": "North Dakota",
+            "OH": "Ohio",
+            "OK": "Oklahoma",
+            "OR": "Oregon",
+            "PA": "Pennsylvania",
+            "RI": "Rhode Island",
+            "SC": "South Carolina",
+            "SD": "South Dakota",
+            "TN": "Tennessee",
+            "TX": "Texas",
+            "UT": "Utah",
+            "VT": "Vermont",
+            "VA": "Virginia",
+            "WA": "Washington",
+            "WV": "West Virginia",
+            "WI": "Wisconsin",
+            "WY": "Wyoming",
+            "DC": "District of Columbia",
+            "AS": "American Samoa",
+            "GU": "Guam",
+            "MP": "N. Mariana Islands",
+            "PR": "Puerto Rico",
+            "VI": "Virgin Islands",
+            "UM": "Minor Outlying Islands"
+        };
+
+        let hoveredStateId = -1;
+        let popupState = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+        let stateGeos = {};
+        let activeStatePopup = {};
+        let popupStateCreated = false;
+        let listenerRegistry = [];
+
+        document.getElementById('weight-checkbox').disabled = true;
+        //document.getElementById('score-checkbox').disabled = true;
+        //document.getElementById('population-checkbox').disabled = true;
+        document.getElementById('density-checkbox').disabled = true;
+
+        function loadStates(geojsonPath) {
+            fetch(geojsonPath)
+                .then(response => response.json())
+                .then(data => {
+                    if (map.getSource('state-source')) {
+                        map.removeLayer('state-fill');
+                        map.removeLayer('state-border');
+                        map.removeSource('state-source');
+                    }
+
+                    map.addSource('state-source', {
+                        type: 'geojson',
+                        data: {
+                            type: "FeatureCollection",
+                            features: []
+                        }
+                    });
+
+                    document.getElementById('weight-checkbox').checked = true;
+                    paintStatesByWeight(true);
+
+                    function paintStatesByWeight(init) {
+                        data.features.forEach((feature, id) => {
+                            if (init) { 
+                                feature.id = id;
+                                stateGeos[id] = {
+                                    coord: feature.geometry.coordinates,
+                                    type: feature.geometry.type
+                                };
+                            }
+
+                            let coord = feature.geometry.coordinates;
+                            let type = feature.geometry.type;
+
+                            let totalWeight = 0;        
+                            if (type === 'Polygon') {
+                                const statePolygon = turf.polygon(coord);
+                                const bbox = turf.bbox(statePolygon);
+                                const searchBox = {
+                                    minX: bbox[0],
+                                    minY: bbox[1],
+                                    maxX: bbox[2],
+                                    maxY: bbox[3]
+                                };
+
+                                const points = zipsGeoIndex.search(searchBox);
+
+                                points.forEach(point => {
+                                    if (turf.booleanPointInPolygon(turf.point(point.geo), statePolygon)) {
+                                        totalWeight += point.weight;
+                                    }
+                                });
+                            }else {
+                                coord.forEach((polygon, index) => {
+                                    const statePolygon = turf.polygon(polygon);
+                                    const bbox = turf.bbox(statePolygon);
+                                    const searchBox = {
+                                        minX: bbox[0],
+                                        minY: bbox[1],
+                                        maxX: bbox[2],
+                                        maxY: bbox[3]
+                                    };
+
+                                    const points = zipsGeoIndex.search(searchBox);
+
+                                    points.forEach(point => {
+                                        if (turf.booleanPointInPolygon(turf.point(point.geo), statePolygon)) {
+                                            totalWeight += point.weight;
+                                        }
+                                    });
+                                }); 
+                            }
+
+                            map.setFeatureState(
+                                { source: 'state-source', id: id },
+                                { colorWeight: totalWeight }
+                            );
+                        });
+                    }
+
+                    function paintStatesByAttrubute(attribute) {
+                        data.features.forEach((feature, id) => {
+                            let coord = feature.geometry.coordinates;
+                            let type = feature.geometry.type;
+
+                            let totalValue = 0; 
+                            let values = 0;     
+                            if (type === 'Polygon') {
+                                const statePolygon = turf.polygon(coord);
+                                const bbox = turf.bbox(statePolygon);
+                                const searchBox = {
+                                    minX: bbox[0],
+                                    minY: bbox[1],
+                                    maxX: bbox[2],
+                                    maxY: bbox[3]
+                                };
+
+                                const points = zipsGeoIndex.search(searchBox);
+
+                                points.forEach(point => {
+                                    if (turf.booleanPointInPolygon(turf.point(point.geo), statePolygon)) {
+                                        switch (attribute) {
+                                        // case "score":
+                                        //     totalValue += parseFloat(point.score);
+                                        //     break;
+                                        // case "population":
+                                        //     totalValue += parseFloat(point.active_population);
+                                        //     break;
+                                        case "engagement":
+                                            totalValue += parseFloat(point.engagement_density);
+                                            break;
+                                        default:
+                                            throw new Error("unknown paint states attribute ${attribute}");
+                                            break;
+                                        }
+                                        values++;
+                                    }
+                                });
+                            }else {
+                                coord.forEach((polygon, index) => {
+                                    const statePolygon = turf.polygon(polygon);
+                                    const bbox = turf.bbox(statePolygon);
+                                    const searchBox = {
+                                        minX: bbox[0],
+                                        minY: bbox[1],
+                                        maxX: bbox[2],
+                                        maxY: bbox[3]
+                                    };
+
+                                    const points = zipsGeoIndex.search(searchBox);
+
+                                    points.forEach(point => {
+                                        if (turf.booleanPointInPolygon(turf.point(point.geo), statePolygon)) {
+                                            switch (attribute) {
+                                            // case "score":
+                                            //     totalValue += parseFloat(point.score);
+                                            //     break;
+                                            // case "population":
+                                            //     totalValue += parseFloat(point.active_population);
+                                            //     break;
+                                            case "engagement":
+                                                totalValue += parseFloat(point.engagement_density);
+                                                break;
+                                            default:
+                                                throw new Error("unknown paint states attribute ${attribute}");
+                                                break;
+                                            }
+                                            values++;
+                                        }
+                                    });
+                                }); 
+                            }
+
+                            let avgValue = 0;
+                            if (values > 0) {
+                                avgValue = totalValue / values;          
+                            }
+
+                            map.setFeatureState(
+                                { source: 'state-source', id: id },
+                                { colorWeight: avgValue }
+                            );
+                        });
+                    }
+
+                    function changeMode(selectedMode) {
+                        document.getElementById(`${selectedMode}-checkbox`).checked = true;
+
+                        if (selectedMode === 'weight') {
+                            map.setPaintProperty("state-fill", "fill-color", [
+                                "interpolate", ["linear"], ["coalesce", ["feature-state", "colorWeight"], 0],
+                                0, "#343434",
+                                100, "#ffeecf",
+                                500, "#ffdfa8",
+                                1000, "#ffd77b",
+                                5000, "#ffd77b",
+                                10000, "#ffce5f",
+                                25000, "#ffc642",
+                                50000, "#ffbd26",
+                                75000, "#ffb50c",
+                                100000, "#ffa60b",
+                                250000, "#ff970b",
+                                500000, "#ff880b",
+                                750000, "#ee7e00",
+                                1000000, "#ff6800",
+                                2500000, "#ff5500",
+                                5000000, "#ff4600",
+                                7500000, "#e73f00",
+                                10000000, "#d23a00",
+                                25000000, "#bf3400",
+                                50000000, "#ae2f00",
+                                75000000, "#9b2a00"
+                            ]);
+                            map.setPaintProperty("state-fill", "fill-opacity", [
+                                "interpolate", ["exponential", 10], ["zoom"],
+                                3, ["case", ["boolean", ["feature-state", "hover"], false], 0.75, 0.65],
+                                4.1, ["case", ["boolean", ["feature-state", "hover"], false], 0.6, 0]
+                            ]);
+                            paintStatesByWeight(false);
+                        // } else if (selectedMode === 'score') {
+                        //     map.setPaintProperty("state-fill", "fill-color", [
+                        //         "interpolate", ["linear"], ["coalesce", ["feature-state", "colorWeight"], 0],
+                        //         0, "#343434",
+                        //         0.1, "#ffeecf",
+                        //         0.2, "#ffdfa8",
+                        //         0.3, "#ffd77b",
+                        //         0.4, "#ffd77b",
+                        //         0.5, "#ffce5f",
+                        //         0.6, "#ffc642",
+                        //         0.7, "#ffbd26",
+                        //         0.8, "#ffb50c",
+                        //         0.9, "#ffa60b",
+                        //         1, "#ff970b",
+                        //         1.25, "#ff880b",
+                        //         1.5, "#ee7e00",
+                        //         1.75, "#ff6800",
+                        //         2, "#ff5500",
+                        //     ]);
+                        //     map.setPaintProperty("state-fill", "fill-opacity", [
+                        //         "interpolate", ["exponential", 10], ["zoom"],
+                        //         3, ["case", ["boolean", ["feature-state", "hover"], false], 0.75, 0.65],
+                        //         4.1, ["case", ["boolean", ["feature-state", "hover"], false], 0.6, 0]
+                        //     ]);
+                        //     paintStatesByAttrubute('score');
+                        // } else if (selectedMode === 'population') {
+                        //     map.setPaintProperty("state-fill", "fill-color", [
+                        //         "interpolate", ["linear"], ["coalesce", ["feature-state", "colorWeight"], 0],
+                        //         0, "#343434",
+                        //         100, "#ffeecf",
+                        //         1000, "#ffdfa8",
+                        //         2500, "#ffd77b",
+                        //         5000, "#ffd77b",
+                        //         7500, "#ffce5f",
+                        //         10000, "#ffc642",
+                        //         20000, "#ffbd26",
+                        //         30000, "#ffb50c",
+                        //         40000, "#ffa60b",
+                        //         50000, "#ff970b",
+                        //         60000, "#ff880b",
+                        //         70000, "#ee7e00",
+                        //         80000, "#ff6800",
+                        //         90000, "#ff5500",
+                        //         100000, "#ff4600",
+                        //         125000, "#e73f00",
+                        //         150000, "#d23a00",
+                        //         175000, "#bf3400",
+                        //         200000, "#ae2f00",
+                        //         500000, "#9b2a00"
+                        //     ]);
+                        //     map.setPaintProperty("state-fill", "fill-opacity", [
+                        //         "interpolate", ["exponential", 10], ["zoom"],
+                        //         3, ["case", ["boolean", ["feature-state", "hover"], false], 0.75, 0.65],
+                        //         4.1, ["case", ["boolean", ["feature-state", "hover"], false], 0.6, 0]
+                        //     ]);
+                        //     paintStatesByAttrubute('population');
+                        } else if (selectedMode === 'density') {
+                            map.setPaintProperty("state-fill", "fill-color", [
+                                "interpolate", ["linear"], ["coalesce", ["feature-state", "colorWeight"], 0],
+                                0, "#343434",
+                                0.0001, "#ffeecf",
+                                0.0005, "#ffdfa8",
+                                0.001, "#ffd77b",
+                                0.005, "#ffd77b",
+                                0.01, "#ffce5f",
+                                0.05, "#ffc642",
+                                0.1, "#ffbd26",
+                                0.25, "#ffb50c",
+                                0.5, "#ffa60b",
+                                0.75, "#ff970b",
+                                1, "#ff880b",
+                                2.5, "#ee7e00",
+                                5, "#ff6800",
+                                7.5, "#ff5500",
+                                10, "#ff4600",
+                            ]);
+                            map.setPaintProperty("state-fill", "fill-opacity", [
+                                "interpolate", ["exponential", 10], ["zoom"],
+                                3, ["case", ["boolean", ["feature-state", "hover"], false], 0.75, 0.65],
+                                4.1, ["case", ["boolean", ["feature-state", "hover"], false], 0.6, 0]
+                            ]);
+                            paintStatesByAttrubute('engagement');
+                        }
+                    }
+
+                    const checkboxes = [
+                        { id: 'weight-checkbox', selectMode: 'weight' },
+                        //{ id: 'score-checkbox', selectMode: 'score' },
+                        //{ id: 'population-checkbox', selectMode: 'population' },
+                        { id: 'density-checkbox', selectMode: 'density' }
+                    ];
+
+                    checkboxes.forEach(({ id, selectMode }) => {
+                        const checkbox = document.getElementById(id);
+                        const handler = () => {
+                            if (checkbox.checked) {
+                                changeMode(selectMode);
+                            }
+                        };
+                        checkbox.addEventListener('change', handler);
+                        listenerRegistry.push({ event: 'change', handler, element: checkbox });
+                    });
+
+                    map.getSource('state-source').setData(data);
+
+                    map.addLayer({
+                    id: "state-fill",
+                    type: "fill",
+                    minzoom: 0,
+                    maxzoom: 6,
+                    source: "state-source",
+                    paint: {
+                        "fill-color": [
+                        "interpolate",
+                        ["linear"],
+                        ["coalesce", ["feature-state", "colorWeight"], 0],
+                        0, "#343434",
+                        100, "#ffeecf",
+                        500, "#ffdfa8",
+                        1000, "#ffd77b",
+                        5000, "#ffd77b",
+                        10000, "#ffce5f",
+                        25000, "#ffc642",
+                        50000, "#ffbd26",
+                        75000, "#ffb50c",
+                        100000, "#ffa60b",
+                        250000, "#ff970b",
+                        500000, "#ff880b",
+                        750000, "#ee7e00",
+                        1000000, "#ff6800",
+                        2500000, "#ff5500",
+                        5000000, "#ff4600",
+                        7500000, "#e73f00",
+                        10000000, "#d23a00",
+                        25000000, "#bf3400",
+                        50000000, "#ae2f00",
+                        75000000, "#9b2a00"
+                        ],
+                        "fill-opacity": [
+                        "interpolate",
+                        ["exponential", 10],
+                        ["zoom"],
+                        3,
+                        [
+                            "case",
+                            ["boolean", ["feature-state", "hover"], false],
+                            0.75,
+                            0.65
+                        ],
+                        4.1,
+                        [
+                            "case",
+                            ["boolean", ["feature-state", "hover"], false],
+                            0.6,
+                            0
+                        ]
+                        ]
+                        }
+                    });
+
+                    map.addLayer({
+                        id: "state-border",
+                        type: "line",
+                        source: "state-source",
+                        paint: {
+                            "line-color": [
+                                "interpolate",
+                                ["linear"],
+                                ["zoom"],
+                                1, "#3e3623",
+                                6, "#52472e",
+                                11, "#645638"
+                            ],
+                            "line-width": [
+                                "interpolate",
+                                ["linear"],
+                                ["zoom"],
+                                1, 1.25,
+                                6, 1.75,
+                                11, 0
+                            ]
+                        }
+                    });
+
+                    const stateHover = (e) => {
+                        const zoom = map.getZoom();
+                        if (zoom < 3 || zoom > 6) return;
+
+                        const featureCluster = map.queryRenderedFeatures(e.point, { layers: [`${existingSource}-clusters`] });
+                        if (featureCluster.length > 0) {
+                            map.setFeatureState(
+                                { source: 'state-source', id: hoveredStateId },
+                                { hover: false }
+                            );
+
+                            activeStatePopup = {};
+                            popupStateCreated = false;
+                            hoveredStateId = -1;
+                            popupState.remove();
+                            return; 
+                        }
+
+                        const newFeatureId = e.features[0].id;
+                        const feature = e.features[0];
+
+                        if (hoveredStateId !== newFeatureId) {
+                            if (hoveredStateId !== -1) {
+                                map.setFeatureState(
+                                    { source: 'state-source', id: hoveredStateId },
+                                    { hover: false }
+                                );
+                            }
+
+                            map.setFeatureState(
+                                { source: 'state-source', id: newFeatureId },
+                                { hover: true }
+                            );
+
+                            hoveredStateId = newFeatureId;
+                        }
+
+                        if (activeStatePopup[newFeatureId]) {
+                            while (!popupStateCreated) {}
+                            popupState
+                                .setLngLat(e.lngLat)
+
+                            return;
+                        }
+
+                        activeStatePopup[newFeatureId] = true;
+
+                        if (popupStateCreated) {
+                            activeStatePopup = {};
+                        }
+
+                        let popupContent = "<strong>state: </strong>";
+                        popupContent += (US_STATES_MAP[feature.properties.s] + ' (' + feature.properties.s + ')') || 'Unknown';
+                        let totalWeight = 0;
+                        let totalEngagement = 0;
+                        //let totalScore = 0;
+                        //let totalPopulation = 0;
+                        let totalPoints = 0;
+
+                        if (stateGeos[newFeatureId].type === 'Polygon') {
+                            const statePolygon = turf.polygon(stateGeos[newFeatureId].coord);
+                            const bbox = turf.bbox(statePolygon);
+                            const searchBox = {
+                                minX: bbox[0],
+                                minY: bbox[1],
+                                maxX: bbox[2],
+                                maxY: bbox[3]
+                            };
+
+                            const points = zipsGeoIndex.search(searchBox);
+
+                            points.forEach(point => {
+                                if (turf.booleanPointInPolygon(turf.point(point.geo), statePolygon)) {
+                                    totalWeight += point.weight;
+                                    if (point.engagement_density) {
+                                        totalEngagement += parseFloat(point.engagement_density);  
+                                    }
+                                    //if (point.score) {
+                                    //    totalScore += parseFloat(point.score); 
+                                    //}
+                                    // if (point.active_population) {
+                                    //     totalPopulation += parseFloat(point.active_population); 
+                                    // }
+
+                                    totalPoints++;
+                                }
+                            });
+                        }else { 
+                            stateGeos[newFeatureId].coord.forEach((polygon, index) => {
+                                const statePolygon = turf.polygon(polygon);
+                                const bbox = turf.bbox(statePolygon);
+                                const searchBox = {
+                                    minX: bbox[0],
+                                    minY: bbox[1],
+                                    maxX: bbox[2],
+                                    maxY: bbox[3]
+                                };
+
+                                const points = zipsGeoIndex.search(searchBox);
+
+                                points.forEach(point => {
+                                    if (turf.booleanPointInPolygon(turf.point(point.geo), statePolygon)) {
+                                        totalWeight += point.weight;
+                                        if (point.engagement_density) {
+                                            totalEngagement += parseFloat(point.engagement_density);  
+                                        }
+                                        // if (point.score) {
+                                        //     totalScore += parseFloat(point.score); 
+                                        // }
+                                        // if (point.active_population) {
+                                        //     totalPopulation += parseFloat(point.active_population); 
+                                        // }
+
+                                        totalPoints++;
+                                    }
+                                });
+                            });
+                        }
+                                
+                        if (totalPoints !== 0) {
+                            popupContent += `<br><strong>zips: </strong>${totalPoints}`;
+                            popupContent += `<br><strong>contribution: </strong>${totalWeight.toFixed(3)}`;
+                            if (totalWeight.toFixed(3) !== (totalWeight / totalPoints).toFixed(3)) {
+                                popupContent += `<br><strong>contribution ⬆⬇: </strong>${(totalWeight / totalPoints).toFixed(3)}`;
+                            }
+                            //popupContent += `<br><strong>score ⬆⬇: </strong>${(totalScore / totalPoints).toFixed(3)}`;
+                            popupContent += `<br><strong>engagement ⬆⬇: </strong>${(totalEngagement / totalPoints).toFixed(6)}`;
+                            //popupContent += `<br><strong>active population ⬆⬇: </strong>${(totalPopulation / totalPoints).toFixed(3)}`;
+                        }
+
+                        popupState
+                            .setLngLat(e.lngLat)
+                            .setHTML(popupContent)
+                            .addTo(map)
+                            .addClassName('hover-popup');
+
+                        popupState._container.id = 'id';
+                    
+                        popupStateCreated = true;
+                    };
+
+                    map.on('mousemove', 'state-fill', stateHover);
+                    listenerRegistry.push({ event: 'mousemove', layer: 'state-fill', handler: stateHover });
+
+                    const stateLeave = (e) => {
+                        const zoom = map.getZoom();
+                        if (zoom < 3 || zoom > 6) return;
+
+                        let popup = document.elementFromPoint(e.originalEvent.clientX, e.originalEvent.clientY);
+                        if (popup && popup.closest) {
+                            let popupBox = popup.closest('.mapboxgl-popup');
+                            if (popupBox) {   
+                               if (popupBox.id !== 'id') {
+                                    map.setFeatureState(
+                                        { source: 'state-source', id: hoveredStateId },
+                                        { hover: false }
+                                    );
+
+                                    activeStatePopup = {};
+                                    popupStateCreated = false;
+                                    hoveredStateId = -1;
+                                    popupState.remove();
+                                    popupState = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+                               }else {
+                                    popupState
+                                        .setLngLat(e.lngLat)
+                               }
+
+                                return;
+                            }
+                        }
+                        
+                        if (hoveredStateId !== -1) {
+                            popupState.remove();
+                            activeStatePopup = {};
+                            popupStateCreated = false;
+                            popupState = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+
+                            map.setFeatureState(
+                                { source: 'state-source', id: hoveredStateId },
+                                { hover: false }
+                            );
+
+                            hoveredStateId = -1;
+                        }
+                    }
+
+                    map.on('mouseleave', 'state-fill', stateLeave);
+                    listenerRegistry.push({ event: 'mouseleave', layer: 'state-fill', handler: stateLeave });
+
+                    const stateZoom = () => {
+                        const zoom = map.getZoom();
+                        if (zoom < 3 || zoom > 6) {
+                            if (hoveredStateId !== -1) {
+                                map.setFeatureState(
+                                    { source: 'state-source', id: hoveredStateId },
+                                    { hover: false }
+                                );
+                                hoveredStateId = -1;
+                                popupState.remove();
+                                popupState = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+                                activeStatePopup = {};
+                                popupStateCreated = false;
+                            }
+                        }
+                    }
+
+                    map.on('zoom', stateZoom);
+                    listenerRegistry.push({ event: 'zoom', handler: stateZoom });
+                })
+                .catch(error => console.error("Error loading polygons:", error));
+        }
+
+        let hoveredCountyId = -1;
+        let popupCounty = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+        let countyGeos = {};
+        let activeCountyPopup = {};
+        let popupCountyCreated = false;
+
+        function loadCounties(geojsonPath) {
+            fetch(geojsonPath)
+                .then(response => response.json())
+                .then(data => {
+                    if (map.getSource('county-source')) {
+                        map.removeLayer('county-fill');
+                        map.removeLayer('county-border');
+                        map.removeSource('county-source');
+                    }
+
+                    map.addSource('county-source', {
+                        type: 'geojson',
+                        data: {
+                            type: "FeatureCollection",
+                            features: []
+                        }
+                    });
+
+                    document.getElementById('weight-checkbox').checked = true;
+                    paintCountiesByWeight(true);
+
+                    function paintCountiesByWeight(init) {
+                        data.features.forEach((feature, id) => {
+                            if (init) { 
+                                feature.id = id;
+                                countyGeos[id] = {
+                                    coord: feature.geometry.coordinates,
+                                    type: feature.geometry.type
+                                };
+                            }
+
+                            let coord = feature.geometry.coordinates;
+                            let type = feature.geometry.type;
+
+                            let totalWeight = 0;        
+                            if (type === 'Polygon') {
+                                const countyPolygon = turf.polygon(coord);
+                                const bbox = turf.bbox(countyPolygon);
+                                const searchBox = {
+                                    minX: bbox[0],
+                                    minY: bbox[1],
+                                    maxX: bbox[2],
+                                    maxY: bbox[3]
+                                };
+
+                                const points = zipsGeoIndex.search(searchBox);
+
+                                points.forEach(point => {
+                                    if (turf.booleanPointInPolygon(turf.point(point.geo), countyPolygon)) {
+                                        totalWeight += point.weight;
+                                    }
+                                });
+                            }else {
+                                coord.forEach((polygon, index) => {
+                                    const countyPolygon = turf.polygon(polygon);
+                                    const bbox = turf.bbox(countyPolygon);
+                                    const searchBox = {
+                                        minX: bbox[0],
+                                        minY: bbox[1],
+                                        maxX: bbox[2],
+                                        maxY: bbox[3]
+                                    };
+
+                                    const points = zipsGeoIndex.search(searchBox);
+
+                                    points.forEach(point => {
+                                        if (turf.booleanPointInPolygon(turf.point(point.geo), countyPolygon)) {
+                                            totalWeight += point.weight;
+                                        }
+                                    });
+                                }); 
+                            }
+
+                            map.setFeatureState(
+                                { source: 'county-source', id: id },
+                                { colorWeight: totalWeight }
+                            );
+                        });
+                    }
+
+                    function paintCountiesByAttribute(attribute) {
+                        data.features.forEach((feature, id) => {
+                            let coord = feature.geometry.coordinates;
+                            let type = feature.geometry.type;
+
+                            let totalValue = 0; 
+                            let values = 0;     
+                            if (type === 'Polygon') {
+                                const countyPolygon = turf.polygon(coord);
+                                const bbox = turf.bbox(countyPolygon);
+                                const searchBox = {
+                                    minX: bbox[0],
+                                    minY: bbox[1],
+                                    maxX: bbox[2],
+                                    maxY: bbox[3]
+                                };
+
+                                const points = zipsGeoIndex.search(searchBox);
+
+                                points.forEach(point => {
+                                    if (turf.booleanPointInPolygon(turf.point(point.geo), countyPolygon)) {
+                                        switch (attribute) {
+                                        case "score":
+                                            totalValue += parseFloat(point.score);
+                                            break;
+                                        case "population":
+                                            totalValue += parseFloat(point.active_population);
+                                            break;
+                                        case "engagement":
+                                            totalValue += parseFloat(point.engagement_density);
+                                            break;
+                                        default:
+                                            throw new Error("unknown paint states attribute ${attribute}");
+                                            break;
+                                        }
+                                        values++;
+                                    }
+                                });
+                            }else {
+                                coord.forEach((polygon, index) => {
+                                    const countyPolygon = turf.polygon(polygon);
+                                    const bbox = turf.bbox(countyPolygon);
+                                    const searchBox = {
+                                        minX: bbox[0],
+                                        minY: bbox[1],
+                                        maxX: bbox[2],
+                                        maxY: bbox[3]
+                                    };
+
+                                    const points = zipsGeoIndex.search(searchBox);
+
+                                    points.forEach(point => {
+                                        if (turf.booleanPointInPolygon(turf.point(point.geo), countyPolygon)) {
+                                            switch (attribute) {
+                                            case "score":
+                                                totalValue += parseFloat(point.score);
+                                                break;
+                                            case "population":
+                                                totalValue += parseFloat(point.active_population);
+                                                break;
+                                            case "engagement":
+                                                totalValue += parseFloat(point.engagement_density);
+                                                break;
+                                            default:
+                                                throw new Error("unknown paint states attribute ${attribute}");
+                                                break;
+                                            }
+                                            values++;
+                                        }
+                                    });
+                                }); 
+                            }
+
+                            let avgValue = 0;
+                            if (values > 0) {
+                                avgValue = totalValue / values;          
+                            }
+
+                            map.setFeatureState(
+                                { source: 'county-source', id: id },
+                                { colorWeight: avgValue }
+                            );
+                        });
+                    }
+
+                    function changeMode(selectedMode) {
+                        document.getElementById(`${selectedMode}-checkbox`).checked = true;
+
+                        if (selectedMode === 'weight') {
+                            map.setPaintProperty("county-fill", "fill-color", [
+                                "interpolate", ["linear"], ["coalesce", ["feature-state", "colorWeight"], 0],
+                                0, "#343434",
+                                100, "#ffeecf",
+                                500, "#ffdfa8",
+                                1000, "#ffd77b",
+                                5000, "#ffd77b",
+                                10000, "#ffce5f",
+                                25000, "#ffc642",
+                                50000, "#ffbd26",
+                                75000, "#ffb50c",
+                                100000, "#ffa60b",
+                                250000, "#ff970b",
+                                500000, "#ff880b",
+                                750000, "#ee7e00",
+                                1000000, "#ff6800",
+                                2500000, "#ff5500",
+                                5000000, "#ff4600",
+                                7500000, "#e73f00",
+                                10000000, "#d23a00",
+                                25000000, "#bf3400",
+                                50000000, "#ae2f00",
+                                75000000, "#9b2a00"
+                            ]);
+                            map.setPaintProperty("county-fill", "fill-opacity", [
+                                "case",
+                                ["boolean", ["feature-state", "hover"], false],
+                                0.6,
+                                0.5
+                            ]);
+                            paintCountiesByWeight(false);
+                        // } else if (selectedMode === 'score') {
+                        //     map.setPaintProperty("county-fill", "fill-color", [
+                        //         "interpolate", ["linear"], ["coalesce", ["feature-state", "colorWeight"], 0],
+                        //         0, "#343434",
+                        //         0.1, "#ffeecf",
+                        //         0.2, "#ffdfa8",
+                        //         0.3, "#ffd77b",
+                        //         0.4, "#ffd77b",
+                        //         0.5, "#ffce5f",
+                        //         0.6, "#ffc642",
+                        //         0.7, "#ffbd26",
+                        //         0.8, "#ffb50c",
+                        //         0.9, "#ffa60b",
+                        //         1, "#ff970b",
+                        //         1.25, "#ff880b",
+                        //         1.5, "#ee7e00",
+                        //         1.75, "#ff6800",
+                        //         2, "#ff5500",
+                        //     ]);
+                        //     map.setPaintProperty("county-fill", "fill-opacity", [
+                        //         "case",
+                        //         ["boolean", ["feature-state", "hover"], false],
+                        //         0.6,
+                        //         0.5
+                        //     ]);
+                        //     paintCountiesByAttribute('score');
+                        // } else if (selectedMode === 'population') {
+                        //     map.setPaintProperty("county-fill", "fill-color", [
+                        //         "interpolate", ["linear"], ["coalesce", ["feature-state", "colorWeight"], 0],
+                        //         0, "#343434",
+                        //         100, "#ffeecf",
+                        //         1000, "#ffdfa8",
+                        //         2500, "#ffd77b",
+                        //         5000, "#ffd77b",
+                        //         7500, "#ffce5f",
+                        //         10000, "#ffc642",
+                        //         20000, "#ffbd26",
+                        //         30000, "#ffb50c",
+                        //         40000, "#ffa60b",
+                        //         50000, "#ff970b",
+                        //         60000, "#ff880b",
+                        //         70000, "#ee7e00",
+                        //         80000, "#ff6800",
+                        //         90000, "#ff5500",
+                        //         100000, "#ff4600",
+                        //         125000, "#e73f00",
+                        //         150000, "#d23a00",
+                        //         175000, "#bf3400",
+                        //         200000, "#ae2f00",
+                        //         500000, "#9b2a00"
+                        //     ]);
+                        //     map.setPaintProperty("county-fill", "fill-opacity", [
+                        //         "case",
+                        //         ["boolean", ["feature-state", "hover"], false],
+                        //         0.6,
+                        //         0.5
+                        //     ]);
+                        //     paintCountiesByAttribute('population');
+                        } else if (selectedMode === 'density') {
+                            map.setPaintProperty("county-fill", "fill-color", [
+                                "interpolate", ["linear"], ["coalesce", ["feature-state", "colorWeight"], 0],
+                                0, "#343434",
+                                0.0001, "#ffeecf",
+                                0.0005, "#ffdfa8",
+                                0.001, "#ffd77b",
+                                0.005, "#ffd77b",
+                                0.01, "#ffce5f",
+                                0.05, "#ffc642",
+                                0.1, "#ffbd26",
+                                0.25, "#ffb50c",
+                                0.5, "#ffa60b",
+                                0.75, "#ff970b",
+                                1, "#ff880b",
+                                2.5, "#ee7e00",
+                                5, "#ff6800",
+                                7.5, "#ff5500",
+                                10, "#ff4600",
+                            ]);
+                            map.setPaintProperty("county-fill", "fill-opacity", [
+                                "case",
+                                ["boolean", ["feature-state", "hover"], false],
+                                0.6,
+                                0.5
+                            ]);
+                            paintCountiesByAttribute('engagement');
+                        }
+                    }
+
+                    const checkboxes = [
+                        { id: 'weight-checkbox', selectMode: 'weight' },
+                        //{ id: 'score-checkbox', selectMode: 'score' },
+                        //{ id: 'population-checkbox', selectMode: 'population' },
+                        { id: 'density-checkbox', selectMode: 'density' }
+                    ];
+
+                    checkboxes.forEach(({ id, selectMode }) => {
+                        const checkbox = document.getElementById(id);
+                        const handler = () => {
+                            if (checkbox.checked) {
+                                changeMode(selectMode);
+                            }
+                        };
+                        checkbox.addEventListener('change', handler);
+                        listenerRegistry.push({ event: 'change', handler, element: checkbox });
+                    });
+
+                    map.getSource('county-source').setData(data);
+
+                    map.addLayer({
+                        id: "county-fill",
+                        type: "fill",
+                        source: "county-source",
+                        minzoom: 4,
+                        maxzoom: 9,
+                        paint: {
+                            "fill-color": [
+                            "interpolate",
+                            ["linear"],
+                            ["coalesce", ["feature-state", "colorWeight"], 0],
+                            0, "#343434",
+                            100, "#ffeecf",
+                            500, "#ffdfa8",
+                            1000, "#ffd77b",
+                            5000, "#ffd77b",
+                            10000, "#ffce5f",
+                            25000, "#ffc642",
+                            50000, "#ffbd26",
+                            75000, "#ffb50c",
+                            100000, "#ffa60b",
+                            250000, "#ff970b",
+                            500000, "#ff880b",
+                            750000, "#ee7e00",
+                            1000000, "#ff6800",
+                            2500000, "#ff5500",
+                            5000000, "#ff4600",
+                            7500000, "#e73f00",
+                            10000000, "#d23a00",
+                            25000000, "#bf3400",
+                            50000000, "#ae2f00",
+                            75000000, "#9b2a00"
+                            ],
+                            "fill-opacity": [
+                                "case",
+                                ["boolean", ["feature-state", "hover"], false], 
+                                0.6,
+                                0.5
+                            ]
+                        }
+                    });
+
+                    map.addLayer({
+                        id: "county-border",
+                        type: "line",
+                        source: "county-source",
+                        paint: {
+                            "line-color": [
+                                "interpolate",
+                                ["linear"],
+                                ["zoom"],
+                                1, "#3e3623",
+                                8, "#52472e",
+                                15, "#645638"
+                            ],
+                            "line-width": [
+                                "interpolate",
+                                ["linear"],
+                                ["zoom"],
+                                1, 0.01,
+                                8, 1.5,
+                                15, 2.5
+                            ]
+                        }
+                    });
+
+                    const countyHover = (e) => {
+                        const zoom = map.getZoom();
+                        if (zoom < 6 || zoom > 9) return;
+
+                        const newFeatureId = e.features[0].id;
+                        const feature = e.features[0];
+
+                        if (hoveredCountyId !== newFeatureId) {
+                            if (hoveredCountyId !== -1) {
+                                map.setFeatureState(
+                                    { source: 'county-source', id: hoveredCountyId },
+                                    { hover: false }
+                                );
+                            }
+
+                            map.setFeatureState(
+                                { source: 'county-source', id: newFeatureId },
+                                { hover: true }
+                            );
+
+                            hoveredCountyId = newFeatureId;
+                        }
+
+                        if (activeCountyPopup[newFeatureId]) {
+                            while (!popupCountyCreated) {}
+                            popupCounty
+                            .setLngLat(e.lngLat) 
+                            return;
+                        }
+
+                        activeCountyPopup[newFeatureId] = true;
+
+                        if (popupCountyCreated) {
+                            activeCountyPopup = {};
+                        }
+
+                        let popupContent = "<strong>county: </strong>";
+                        popupContent += feature.properties.c || 'Unknown';
+                        let totalWeight = 0;
+                        let totalEngagement = 0;
+                        //let totalScore = 0;
+                        //let totalPopulation = 0;
+                        let totalPoints = 0;
+
+                        if (countyGeos[newFeatureId].type === 'Polygon') {
+                            const countyPolygon = turf.polygon(countyGeos[newFeatureId].coord);
+                            const bbox = turf.bbox(countyPolygon);
+                            const searchBox = {
+                                minX: bbox[0],
+                                minY: bbox[1],
+                                maxX: bbox[2],
+                                maxY: bbox[3]
+                            };
+
+                            const points = zipsGeoIndex.search(searchBox);
+
+                            points.forEach(point => {
+                                if (turf.booleanPointInPolygon(turf.point(point.geo), countyPolygon)) {
+                                    totalWeight += point.weight;
+                                    if (point.engagement_density) {
+                                        totalEngagement += parseFloat(point.engagement_density);  
+                                    }
+                                    // if (point.score) {
+                                    //     totalScore += parseFloat(point.score); 
+                                    // }
+                                    // if (point.active_population) {
+                                    //     totalPopulation += parseFloat(point.active_population); 
+                                    // }
+
+                                    totalPoints++;
+                                }
+                            });
+                        }else { 
+                            countyGeos[newFeatureId].coord.forEach((polygon, index) => {
+                                const countyPolygon = turf.polygon(polygon);
+                                const bbox = turf.bbox(countyPolygon);
+                                const searchBox = {
+                                    minX: bbox[0],
+                                    minY: bbox[1],
+                                    maxX: bbox[2],
+                                    maxY: bbox[3]
+                                };
+
+                                const points = zipsGeoIndex.search(searchBox);
+
+                                points.forEach(point => {
+                                    if (turf.booleanPointInPolygon(turf.point(point.geo), countyPolygon)) {
+                                        totalWeight += point.weight;
+                                        if (point.engagement_density) {
+                                            totalEngagement += parseFloat(point.engagement_density);  
+                                        }
+                                        // if (point.score) {
+                                        //     totalScore += parseFloat(point.score); 
+                                        // }
+                                        // if (point.active_population) {
+                                        //     totalPopulation += parseFloat(point.active_population); 
+                                        // }
+
+                                        totalPoints++;
+                                    }
+                                });
+                            });
+                        }
+
+                        if (totalPoints !== 0) {
+                            popupContent += `<br><strong>zips: </strong>${totalPoints}`;
+                            popupContent += `<br><strong>contribution: </strong>${totalWeight.toFixed(3)}`;
+                            if (totalWeight.toFixed(3) !== (totalWeight / totalPoints).toFixed(3)) {
+                                popupContent += `<br><strong>contribution ⬆⬇: </strong>${(totalWeight / totalPoints).toFixed(3)}`;
+                            }
+                            //popupContent += `<br><strong>score ⬆⬇: </strong>${(totalScore / totalPoints).toFixed(3)}`;
+                            popupContent += `<br><strong>engagement ⬆⬇: </strong>${(totalEngagement / totalPoints).toFixed(6)}`;
+                            //popupContent += `<br><strong>active population ⬆⬇: </strong>${(totalPopulation / totalPoints).toFixed(3)}`;
+                        }
+
+                        popupCounty
+                            .setLngLat(e.lngLat)
+                            .setHTML(popupContent)
+                            .addTo(map)
+                            .addClassName('hover-popup');
+                            
+                        popupCountyCreated = true;
+                    }
+
+                    map.on('mousemove', 'county-fill', countyHover);
+                    listenerRegistry.push({ event: 'mousemove', layer: 'county-fill', handler: countyHover });
+
+                    const countyLeave = (e) => {
+                        const zoom = map.getZoom();
+                        if (zoom < 6 || zoom > 9) return;
+
+                        let popup = document.elementFromPoint(e.originalEvent.clientX, e.originalEvent.clientY);
+                        if (popup && popup.closest) {
+                            let isOnPopup = popup.closest('.mapboxgl-popup');
+                            if (isOnPopup) {
+                                popupCounty
+                                    .setLngLat(e.lngLat)
+                                return;
+                            }
+                        }
+                        
+                        if (hoveredCountyId !== -1) {
+                            popupCounty.remove();
+                            activeCountyPopup = {};
+                            popupCountyCreated = false;
+
+                            map.setFeatureState(
+                                { source: 'county-source', id: hoveredCountyId },
+                                { hover: false }
+                            );
+                            
+                            hoveredCountyId = -1;
+                        }
+                    }
+
+                    map.on('mouseleave', 'county-fill', countyLeave);
+                    listenerRegistry.push({ event: 'mouseleave', layer: 'county-fill', handler: countyLeave });
+
+                    const countyZoom = () => {
+                        const zoom = map.getZoom();
+                        if (zoom < 6 || zoom > 9) {
+                            if (hoveredCountyId !== -1) {
+                                map.setFeatureState(
+                                    { source: 'county-source', id: hoveredCountyId },
+                                    { hover: false }
+                                );
+                                hoveredCountyId = -1;
+                            }
+
+                            popupCounty.remove();
+                            popupCounty = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+                            activeCountyPopup = {};
+                            popupCountyCreated = false;
+                        }
+                    }
+
+                    map.on('zoom', countyZoom);
+                    listenerRegistry.push({ event: 'zoom', handler: countyZoom });
+                })
+                .catch(error => console.error("Error loading polygons:", error));
+        }
+
+        let resetFile = false;
+        let existingSource = "";
+        let geojsonData;
+
+        let popupsCluster = [];
+        let popupsPoints = [];
+
+        const validAttributes = {
+            zip: "zip",
+            country: "country",
+            dma_name: "dma",
+            dma_code: "dma code",
+            state: "state",
+            city: "city",
+            county: "county",
+            latitude: "lat",
+            longitude: "long",
+            population: "population",
+            avg_population: "population ⬆⬇",
+            racial_white: "white population",
+            racial_black: "black population",
+            racial_hispanic: "hispanic population",
+            racial_asian: "asian population",
+            racial_native: "native population",
+            racial_pacific: "pacific (island) population",
+            racial_multi: "multi race population",
+            racial_other: "other race population",
+            males: "males",
+            female: "females",
+            pop_under_10: "population under 10",
+            pop_10_to_19: "population 10 → 19",
+            pop_20_to_29: "population 20 → 29",
+            pop_30_to_39: "population 30 → 39",
+            pop_40_to_49: "population 40 → 49",
+            pop_50_to_59: "population 50 → 59",
+            pop_60_to_69: "population 60 → 69",
+            pop_70_to_79: "population 70 → 79",
+            pop_80_plus: "population 80+",
+            education_high: "high school (%)",
+            education_bachelors: "bachelor's degree (%)",
+            education_graduate: "master's or PhD (%)",
+            income_individual: "individual income $",
+            income_household: "household income $",
+            population_in_poverty: "in poverty (%)",
+            type: "type",
+            total_contribution: "contribution",
+            //score: "score",
+            //active_population: "active population",
+            engagement: "engagement"
+        };
+        
+        function csvToGeoJSON(csv) {
+            try {
+                const parsed = Papa.parse(csv, {
+                    header: false,
+                    skipEmptyLines: true,
+                    dynamicTyping: false
+                });
+
+                const rows = parsed.data;
+
+                if (rows.length === 0) {
+                    throw new Error("Empty CSV datasource file");
+                }
+
+                let lastDataRow = 0;
+                for (let row = 0; row < rows.length; row++) {
+                    if (rows[row].some(cell => cell != null && String(cell).trim() !== "")) {
+                        lastDataRow = row;
+                    } else if (row > 0) {
+                        break;
+                    }
+                }
+                rows.length = lastDataRow + 1;
+
+                const header = rows[0];
+                const attributeToColumn = [];
+                const columnToAttribute = [];
+
+                header.forEach((attribute, column) => {
+                    if (!attribute) return;
+                    if (validAttributes[attribute]) {
+                        attributeToColumn[attribute] = column;
+                        columnToAttribute[column] = attribute;
+                    }
+                });
+
+                const latAttribute = attributeToColumn["latitude"];
+                const lngAttribute = attributeToColumn["longitude"];
+                if (latAttribute === undefined || lngAttribute === undefined) {
+                    throw new Error("Missing lat/lng attributes");
+                }
+
+                const features = [];
+
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (!row || row.length === 0) break;
+
+                    const lat = parseFloat(row[latAttribute]);
+                    const lng = parseFloat(row[lngAttribute]);
+
+                    if (isNaN(lat) || isNaN(lng)) {
+                        continue;
+                    }
+
+                    const properties = {};
+
+                    columnToAttribute.forEach((attribute, column) => {
+                        if (row[column]) {
+                            const floatVal = parseFloat(row[column]);
+                            if (!isNaN(floatVal) && isFinite(floatVal) && attribute !== "zip") {
+                                properties[attribute] = floatVal.toFixed(6);
+                            }else {
+                                properties[attribute] = row[column];
+                            }
+                        } else {
+                            properties[attribute] = 'not provided';
+                        }
+                    });
+
+                    features.push({
+                        type: "Feature",
+                        geometry: {
+                            type: "Point",
+                            coordinates: [lng, lat]
+                        },
+                        properties
+                    });
+                }
+
+                return {
+                    type: "FeatureCollection",
+                    features
+                };
+
+            } catch (err) {
+                throw new Error("Failed to parse CSV: " + err.message);
+            }
+        }
+
+        function resetMap() {
+            if (existingSource) {
+                if (map.getLayer(`buildings`)) {
+                    map.removeLayer(`buildings`);
+                }
+                if (map.getLayer(`${existingSource}-circle-layer`)) {
+                    map.removeLayer(`${existingSource}-circle-layer`);
+                }
+                if (map.getLayer(`${existingSource}-clusters`)) {
+                    map.removeLayer(`${existingSource}-clusters`);
+                }
+                if (map.getLayer(`${existingSource}-cluster-count`)) {
+                    map.removeLayer(`${existingSource}-cluster-count`);
+                }
+                if (map.getLayer(`zip-fill`)) {
+                    map.removeLayer(`zip-fill`);
+                }
+                if (map.getLayer(`zip-border`)) {
+                    map.removeLayer(`zip-border`);
+                }
+                if (map.getSource(existingSource)) {
+                    map.removeSource(existingSource);
+                    map.removeSource("zipGeojson");
+                }
+            }
+
+            listenerRegistry.forEach(({ event, layer, handler, element }) => {
+                if (layer) {
+                    map.off(event, layer, handler);
+                } else if (element) {
+                    element.removeEventListener(event, handler);
+                } else {
+                    map.off(event, handler);
+                }
+            });
+            listenerRegistry = [];
+            //existingSource = null;
+            zipsGeoIndex = new RBush();
+
+            geojsonData = null;
+
+            document.getElementById('weight-checkbox').disabled = true;
+            //document.getElementById('score-checkbox').disabled = true;
+            //document.getElementById('population-checkbox').disabled = true;
+            document.getElementById('density-checkbox').disabled = true;
+
+            document.getElementById('weight-checkbox').checked = false;
+            //document.getElementById('score-checkbox').checked = false;
+            //document.getElementById('population-checkbox').checked = false;
+            document.getElementById('density-checkbox').checked = false;
+            
+            map.setCenter([-95, 37]);
+            map.setZoom(3);
+
+            popupsCluster.forEach(popup => popup.remove());
+            popupsPoints.forEach(popup => popup.remove());
+            popupsCluster = [];
+            popupsPoints = [];
+
+            setStats(0, 0, 0, 0, 0, 0);
+
+            if (map.getSource('state-source')) {
+                if (map.getLayer('state-fill')) {
+                    map.removeLayer('state-fill');
+                }
+                if (map.getLayer('state-border')) {
+                    map.removeLayer('state-border');
+                }
+                map.removeSource('state-source');
+            }
+
+            if (map.getSource('county-source')) {
+                if (map.getLayer('county-fill')) {
+                    map.removeLayer('county-fill');
+                }
+                if (map.getLayer('county-border')) {
+                    map.removeLayer('county-border');
+                }
+                map.removeSource('county-source');
+            }
+        }
+
+        let zipsGeoIndex = new RBush();
+
+        function buildZipsGeoIndex() {
+            const points = geojsonData.features.filter(feature => feature.geometry.type === 'Point');
+            points.forEach(feature => {
+                const [x, y] = feature.geometry.coordinates;   
+                const item = {
+                    minX: x,
+                    minY: y,
+                    maxX: x,
+                    maxY: y,
+                    zip: feature.properties.zip,
+                    geo: feature.geometry.coordinates,
+                    weight: feature.properties.total_contribution,
+                    //score: feature.properties.score,
+                    engagement_density: feature.properties.engagement,
+                    //active_population: feature.properties.active_population
+                };
+                
+                zipsGeoIndex.insert(item);
+            });
+        }
+
+        function setStats(zips, weight, avgWeight, engagement, score, population) {
+            document.getElementById('total-zips').textContent = zips;
+            document.getElementById('total-weight').textContent = weight;
+            document.getElementById('avg-weight').textContent = avgWeight;
+            document.getElementById('total-engagement').textContent = engagement;
+            //document.getElementById('total-score').textContent = score;
+            //document.getElementById('total-population').textContent = population;
+        }
+
+        document.getElementById('sendButton').addEventListener('mousedown', function (e) {
+            e.preventDefault();
+        });
+
+        document.getElementById('clearPromptButton').addEventListener('click', function () {
+            document.getElementById('promptInput').value = '';
+            document.getElementById('promptInput').focus();
+        });
+
+        async function loadData(prompt) {
+            try {
+                const response = await fetch("https://nodered.givslyga.com/make-vba", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/xml"
+                    },
+                    body: JSON.stringify({
+                        user: prompt
+                    })
+                });
+
+                if (!response.ok) throw new Error("Failed to fetch data: " + response.statusText);
+
+                const csv = await response.text();
+
+                return csvToGeoJSON(csv);
+            } catch (error) {
+                console.error("Error:", error);
+                throw error;
+            }
+        }
+
+        let load = false;
+
+        map.on('load', () => {
+            document.getElementById('sendButton').addEventListener('click', async function () {
+                let prompt = document.getElementById('promptInput').value;
+                if (prompt.trim() === "") return;
+
+                if (load) return;
+                load = true;
+
+                const msg = document.getElementById('message');
+                msg.style.display = 'block';
+                msg.textContent = "Loading ...";
+
+                document.getElementById('promptInput').value = '';
+                document.getElementById('promptInput').blur();
+
+                if (existingSource === "bot") {
+                    resetMap();
+                }
+
+                const source = "bot"
+                existingSource = source;
+                
+                try {
+                    const geojson = await loadData(prompt);
+                    geojsonData = geojson;
+
+                    let totalZips = 0;
+                    let totalWeight = 0;
+                    let totalEngagement = 0;
+                    //let totalScore = 0;
+                    //let totalPopulation = 0;
+
+                    geojson.features.forEach((feature, index) => {
+                        const weight = parseFloat(feature.properties.total_contribution) || 0;
+                        feature.properties.total_contribution = weight;
+                        feature.properties.id = index;
+                        totalZips++;
+                        totalWeight += weight;
+                        totalEngagement += parseFloat(feature.properties.engagement) || 0;
+                        //totalScore += parseFloat(feature.properties.score) || 0;
+                        //totalPopulation += parseFloat(feature.properties.active_population) || 0;
+                    });
+
+                    setStats(
+                        totalZips, 
+                        totalWeight.toFixed(2), 
+                        (totalWeight / totalZips).toFixed(2),
+                        (totalEngagement / totalZips).toFixed(6),
+                        //(totalScore/ totalZips).toFixed(3),
+                        //(totalPopulation/ totalZips).toFixed(0)
+                    );
+
+                    buildZipsGeoIndex();
+
+                    await Promise.all([
+                        loadStates('./state.geojson'),
+                        loadCounties('./county.geojson')
+                    ]);
+
+                    map.addSource(source, {
+                        type: 'geojson',
+                        data: geojson,
+                        cluster: true,
+                        clusterMaxZoom: 3,
+                        clusterRadius: 30,
+                        clusterProperties: {
+                            'contribution_sum': ['+', ['get', 'total_contribution']]
+                        }
+                    });
+
+                    map.addLayer({
+                        id: 'buildings',
+                        type: 'fill-extrusion',
+                        source: 'composite',
+                        'source-layer': 'building',
+                        filter: ['==', 'extrude', 'true'],
+                        paint: {
+                        'fill-extrusion-color': '#3b3b3b',
+                        'fill-extrusion-height': ['get', 'height'],
+                        'fill-extrusion-base': ['get', 'min_height'],
+                        'fill-extrusion-opacity': 0.9
+                        }
+                    });
+
+                    map.addLayer({
+                        id: `${source}-circle-layer`,
+                        type: 'circle',
+                        source: source,
+                        paint: {
+                            'circle-radius': [
+                                'interpolate',
+                                ['linear'],
+                                ['coalesce', ['get', 'total_contribution'], 0],
+                                100, 1,
+                                500, 1.25,
+                                1000, 1.5,
+                                5000, 1.75,
+                                10000, 2,
+                                25000, 2.25,
+                                50000, 2.5,
+                                75000, 2.75,
+                                100000, 3,
+                                250000, 3.25,
+                                500000, 3.5,
+                                750000, 3.75,
+                                1000000, 4,
+                                2500000, 4.25,
+                                5000000, 4.5,
+                                7500000, 4.75,
+                                10000000, 5,
+                                25000000, 5.25,
+                                50000000, 5.5,
+                                75000000, 5.75,
+                                100000000, 7,
+                            ],
+                            'circle-color': [
+                                'interpolate',
+                                ['linear'],
+                                ['coalesce', ['get', 'total_contribution'], 0],
+                                100, "#ffeecf",
+                                500, "#ffdfa8",
+                                1000, "#ffd77b",
+                                5000, "#ffd77b",
+                                10000, "#ffce5f",
+                                25000, "#ffc642",
+                                50000, "#ffbd26",
+                                75000, "#ffb50c",
+                                100000, "#ffa60b",
+                                250000, "#ff970b",
+                                500000, "#ff880b",
+                                750000, "#ee7e00",
+                                1000000, "#ff6800",
+                                2500000, "#ff5500",
+                                5000000, "#ff4600",
+                                7500000, "#e73f00",
+                                10000000, "#d23a00",
+                                25000000, "#bf3400",
+                                50000000, "#ae2f00",
+                                75000000, "#9b2a00",
+                                100000000, "#8b0101",
+                            ],
+                            'circle-opacity': 0.9
+                        },
+                        layout: {
+                            'circle-sort-key': ['coalesce', ['get', 'total_contribution'], 0]
+                        }
+                    });
+
+                    map.addLayer({
+                        id: `${source}-clusters`,
+                        type: 'circle',
+                        source: source,
+                        filter: ['has', 'point_count'],
+                        paint: {
+                            'circle-color': [
+                                'step',
+                                ['coalesce', ['get', 'contribution_sum'], 0],
+                                "#ffeecf", 100,
+                                "#ffdfa8", 500,
+                                "#ffd77b", 1000,
+                                "#ffd77b", 5000,
+                                "#ffce5f", 10000,
+                                "#ffc642", 25000,
+                                "#ffbd26", 50000,
+                                "#ffb50c", 75000,
+                                "#ffa60b", 100000,
+                                "#ff970b", 250000,
+                                "#ff880b", 500000,
+                                "#ee7e00", 750000,
+                                "#ff6800", 1000000,
+                                "#ff5500", 2500000,
+                                "#ff4600", 5000000,
+                                "#e73f00", 7500000,
+                                "#d23a00", 10000000,
+                                "#bf3400", 25000000,
+                                "#ae2f00", 50000000,
+                                "#9b2a00", 75000000,
+                                "#8b0101"
+                            ],
+                            'circle-radius': [
+                                'step',
+                                ['coalesce', ['get', 'point_count'], 0],
+                                2,
+                                2, 9,
+                                10, 9.5,
+                                100, 12,
+                                1000, 15.5,
+                                10000, 16.5
+                            ],
+                            'circle-opacity': 0.9
+                        }
+                    });
+                    
+                    map.addLayer({
+                        id: `${source}-cluster-count`,
+                        type: 'symbol',
+                        source: source,
+                        filter: ['has', 'point_count'],
+                        layout: {
+                            'text-field': ['get', 'point_count'],
+                            "text-font": ["DIN Offc Pro Bold", "Arial Unicode MS Bold"],
+                            'text-size': 11.5
+                        },
+                        paint: {
+                            'text-color': '#ffffff',
+                            'text-halo-width': 1.25,
+                            'text-halo-color': '#2f2f2f'
+                        }
+                    });
+
+                    map.addSource('zipGeojson', {
+                        type: 'geojson',
+                        data: {
+                            type: 'FeatureCollection',
+                            features: []
+                        }
+                    });
+
+                    map.addLayer({
+                        id: "zip-fill",
+                        type: "fill",
+                        source: "zipGeojson",
+                        minzoom: 9,
+                        maxzoom: 14,
+                        paint: {
+                        "fill-color": [
+                            "interpolate", ["linear"],
+                            ['coalesce', ['get', 'total_contribution'], 0],
+                            0, "#343434",
+                            100, "#ffeecf",
+                            500, "#ffdfa8",    
+                            1000, "#ffd77b",
+                            5000, "#ffd77b",
+                            10000, "#ffce5f",
+                            25000, "#ffc642",
+                            50000, "#ffbd26",
+                            75000, "#ffb50c",
+                            100000, "#ffa60b",
+                            250000, "#ff970b",
+                            500000, "#ff880b",
+                            750000, "#ee7e00",
+                            1000000, "#ff6800",
+                            2500000, "#ff5500",
+                            5000000, "#ff4600",
+                            7500000, "#e73f00",
+                            10000000, "#d23a00",
+                            25000000, "#bf3400",
+                            50000000, "#ae2f00",
+                            75000000, "#9b2a00"
+                            ],
+                            "fill-opacity": [
+                            "case",
+                            ["boolean", ["feature-state", "hover"], false],
+                                0.6,
+                                0.5
+                            ]
+                        }
+                    });
+
+                    map.addLayer({
+                        id: "zip-border",
+                        type: "line",
+                        source: "zipGeojson",
+                        minzoom: 5,
+                        maxzoom: 14,
+                        paint: {
+                        "line-color": [
+                        "interpolate", ["linear"],
+                        ["zoom"],
+                            1, "#3e3623",
+                            15, "#645638"
+                        ],
+                        "line-width": [
+                        "interpolate", ["linear"],
+                        ["zoom"],
+                            1, 0.01,
+                            6, 1,
+                            15, 2.5
+                        ]
+                        }
+                    });
+
+                    function changeMode(selectedMode) {
+                        document.getElementById(`${selectedMode}-checkbox`).checked = true;
+
+                        if (selectedMode === 'weight') {
+                            map.setPaintProperty(`zip-fill`, 'fill-color', [
+                                'interpolate',
+                                ['linear'],
+                                ['coalesce', ['get', 'total_contribution'], 0],
+                                0, "#343434",
+                                100, "#ffeecf",
+                                500, "#ffdfa8",    
+                                1000, "#ffd77b",
+                                5000, "#ffd77b",
+                                10000, "#ffce5f",
+                                25000, "#ffc642",
+                                50000, "#ffbd26",
+                                75000, "#ffb50c",
+                                100000, "#ffa60b",
+                                250000, "#ff970b",
+                                500000, "#ff880b",
+                                750000, "#ee7e00",
+                                1000000, "#ff6800",
+                                2500000, "#ff5500",
+                                5000000, "#ff4600",
+                                7500000, "#e73f00",
+                                10000000, "#d23a00",
+                                25000000, "#bf3400",
+                                50000000, "#ae2f00",
+                                75000000, "#9b2a00"
+                            ]);
+
+                            map.setPaintProperty("zip-fill", "fill-opacity", [
+                                "case",
+                                ["boolean", ["feature-state", "hover"], false],
+                                0.6,
+                                0.5
+                            ]);
+
+                            map.setPaintProperty(`${source}-circle-layer`, 'circle-color', [
+                                'interpolate',
+                                ['linear'],
+                                ['coalesce', ['get', 'total_contribution'], 0],
+                                100, "#ffeecf",
+                                500, "#ffdfa8",
+                                1000, "#ffd77b",
+                                5000, "#ffd77b",
+                                10000, "#ffce5f",
+                                25000, "#ffc642",
+                                50000, "#ffbd26",
+                                75000, "#ffb50c",
+                                100000, "#ffa60b",
+                                250000, "#ff970b",
+                                500000, "#ff880b",
+                                750000, "#ee7e00",
+                                1000000, "#ff6800",
+                                2500000, "#ff5500",
+                                5000000, "#ff4600",
+                                7500000, "#e73f00",
+                                10000000, "#d23a00",
+                                25000000, "#bf3400",
+                                50000000, "#ae2f00",
+                                75000000, "#9b2a00",
+                                100000000, "#8b0101"
+                            ]);
+                            map.setPaintProperty(`${source}-circle-layer`, 'circle-opacity', 0.9);
+                        } else if (selectedMode === 'density') {
+                            map.setPaintProperty(`zip-fill`, 'fill-color', [
+                                'interpolate',
+                                ['linear'],
+                                ['coalesce', ['get', 'density'], 0],
+                                0, "#343434",
+                                0.0001, "#ffeecf",
+                                0.0005, "#ffdfa8",
+                                0.001, "#ffd77b",
+                                0.005, "#ffd77b",
+                                0.01, "#ffce5f",
+                                0.05, "#ffc642",
+                                0.1, "#ffbd26",
+                                0.25, "#ffb50c",
+                                0.5, "#ffa60b",
+                                0.75, "#ff970b",
+                                1, "#ff880b",
+                                2.5, "#ee7e00",
+                                5, "#ff6800",
+                                7.5, "#ff5500",
+                                10, "#ff4600",
+                            ]);
+
+                            map.setPaintProperty("zip-fill", "fill-opacity", [
+                                "case",
+                                ["boolean", ["feature-state", "hover"], false],
+                                0.6,
+                                0.5
+                            ]);
+
+                            map.setPaintProperty(`${source}-circle-layer`, 'circle-color', [
+                                'interpolate',
+                                ['linear'],
+                                ['coalesce', ['to-number', ['get', 'engagement']], 0],
+                                0, "#343434",
+                                0.0001, "#ffeecf",
+                                0.0005, "#ffdfa8",
+                                0.001, "#ffd77b",
+                                0.005, "#ffd77b",
+                                0.01, "#ffce5f",
+                                0.05, "#ffc642",
+                                0.1, "#ffbd26",
+                                0.25, "#ffb50c",
+                                0.5, "#ffa60b",
+                                0.75, "#ff970b",
+                                1, "#ff880b",
+                                2.5, "#ee7e00",
+                                5, "#ff6800",
+                                7.5, "#ff5500",
+                                10, "#ff4600",
+                            ]);
+                            map.setPaintProperty(`${source}-circle-layer`, 'circle-opacity', 0.9);
+                        }
+                    }
+
+                    const checkboxes = [
+                        { id: 'weight-checkbox', selectMode: 'weight' },
+                        //{ id: 'score-checkbox', selectMode: 'score' },
+                        //{ id: 'population-checkbox', selectMode: 'population' },
+                        { id: 'density-checkbox', selectMode: 'density' }
+                    ];
+
+                    checkboxes.forEach(({ id, selectMode }) => {
+                        const checkbox = document.getElementById(id);
+                        const handler = () => {
+                            if (checkbox.checked) {
+                                changeMode(selectMode);
+                            }
+                        };
+                        checkbox.addEventListener('change', handler);
+                        listenerRegistry.push({ event: 'change', handler, element: checkbox });
+                    });
+
+                    let maxZoom = false;
+                    let clickedClusters = {};
+                    let clickedPoints = {};
+
+                    function updateCircleRadius() {
+                        const zoom = map.getZoom();
+                        let radius;
+
+                        if (zoom > 9 && !maxZoom) {
+                            popupsPoints.forEach(popup => popup.remove());
+                            popupsPoints = [];
+
+                            maxZoom = true;
+
+                            map.setPaintProperty(`${source}-circle-layer`, 'circle-opacity', 1);
+
+                            radius = [
+                            'interpolate',
+                            ['linear'],
+                            ['coalesce', ['get', 'total_contribution'], 0],
+                                100, 6,
+                                500, 6.25,
+                                1000, 6.5,
+                                5000, 6.75,
+                                10000, 7,
+                                25000, 7.25,
+                                50000, 7.5,
+                                75000, 7.75,
+                                100000, 8,
+                                250000, 8.25,
+                                500000, 8.5,
+                                750000, 8.75,
+                                1000000, 9,
+                                2500000, 9.25,
+                                5000000, 9.5,
+                                7500000, 9.75,
+                                10000000, 10,
+                                25000000, 10.25,
+                                50000000, 10.5,
+                                75000000, 10.75,
+                                100000000, 12,
+                            ];
+
+                            map.setPaintProperty(`${source}-circle-layer`, 'circle-radius', radius);
+                            return;
+                        }
+
+                        if (zoom > 5 && zoom <= 9 && maxZoom) {
+                            popupsPoints.forEach(popup => popup.remove());
+                            popupsCluster.forEach(popup => popup.remove());
+                            popupsCluster = [];
+                            popupsPoints = [];
+                                
+                            maxZoom = false;
+
+                            map.setPaintProperty(`${source}-circle-layer`, 'circle-opacity', 0.9);
+
+                            radius = [
+                                'interpolate',
+                                ['linear'],
+                                ['coalesce', ['get', 'total_contribution'], 0],
+                                100, 1,
+                                500, 1.25,
+                                1000, 1.5,
+                                5000, 1.75,
+                                10000, 2,
+                                25000, 2.25,
+                                50000, 2.5,
+                                75000, 2.75,
+                                100000, 3,
+                                250000, 3.25,
+                                500000, 3.5,
+                                750000, 3.75,
+                                1000000, 4,
+                                2500000, 4.25,
+                                5000000, 4.5,
+                                7500000, 4.75,
+                                10000000, 5,
+                                25000000, 5.25,
+                                50000000, 5.5,
+                                75000000, 5.75,
+                                100000000, 7,
+                            ];
+
+                            map.setLayoutProperty(`${source}-circle-layer`, 'visibility', 'visible');
+                            map.setPaintProperty(`${source}-circle-layer`, 'circle-radius', radius);
+
+                            clickedClusters = {};
+                            clickedPoints = {};
+                        }
+                    }
+
+                    let storedGeoZips = {};
+
+                    function getMapViewZips() {
+                        const zoom = map.getZoom();
+                        if (zoom <= 9) {
+                            return;
+                        }
+
+                        const bounds = map.getBounds();
+                        const bbox = {
+                            minX: bounds.getWest(),
+                            minY: bounds.getSouth(),
+                            maxX: bounds.getEast(),
+                            maxY: bounds.getNorth()
+                        };
+
+                        const zips = [];
+                        const zipsMap = {};
+                        const geoZips = zipsGeoIndex.search(bbox);
+
+                        geoZips.forEach(geo => {
+                            if (!storedGeoZips[geo.zip]) {
+                                storedGeoZips[geo.zip] = {};
+                                zipsMap[geo.zip] = {
+                                    weight: geo.weight,
+                                    density: geo.engagement_density,
+                                    minX: geo.minX,
+                                    minY: geo.minY
+                                }
+                                zips.push(geo.zip);
+                            }
+                        });
+
+                        if (zips.length > 0) {
+                            fetchZipsToMapbox(zips, zipsMap, bbox);
+                        }
+                    }
+
+                    async function fetchZipsToMapbox(zipList, zipsMap, bbox) {
+                        try {       
+                            const response = await fetch("https://nodered.givslyga.com/zips", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/xml"
+                                },
+                                body: JSON.stringify({ zips: zipList })
+                            });
+
+                            if (!response.ok) {
+                                throw new Error(`Server error: ${response.status}`);
+                            }
+
+                            const data = await response.json();
+
+                            data.forEach(item => {
+                                const weight = parseFloat(zipsMap[item.zip].weight);
+                                const density = parseFloat(zipsMap[item.zip].density);
+
+                                storedGeoZips[item.zip] = {
+                                    id: item.zip,
+                                    type: "Feature",
+                                    geometry: item.geojson_geom,
+                                    properties: { 
+                                        minX: zipsMap[item.zip].minX,
+                                        minY: zipsMap[item.zip].minY,
+                                        zip: item.zip,
+                                        total_contribution: weight,
+                                        density: density
+                                    }
+                                };
+                            });
+
+                            const zips = Object.keys(storedGeoZips)
+
+                            if (zips.length >= 1000) {
+                                zips.forEach(zipCode => {
+                                    if (!storedGeoZips[zipCode].properties) {
+                                        return;
+                                    }
+
+                                    const zipdata = storedGeoZips[zipCode].properties;
+
+                                    if (!isNaN(zipdata.minX) && !isNaN(zipdata.minY)) {
+                                        const view = turf.bboxPolygon([
+                                            bbox.minX,
+                                            bbox.minY,
+                                            bbox.maxX,
+                                            bbox.maxY
+                                        ]);
+
+                                        const point = turf.point([zipdata.minX, zipdata.minY]);
+                                        const inside = turf.booleanPointInPolygon(point, view);
+
+                                        if (!inside) {
+                                            delete storedGeoZips[zipCode];
+                                        }
+                                    }
+                                });
+                            }
+                            
+                            const geojson = {
+                                type: "FeatureCollection",
+                                features: Object.values(storedGeoZips)
+                            };
+
+                            const source = map.getSource('zipGeojson');
+                            if (source) {
+                                source.setData(geojson);
+                            }
+                        } catch (error) {
+                            console.error("Failed to fetch or load ZIP GeoJSON:", error);
+                        }
+                    }
+
+                    map.on('move', getMapViewZips);
+                    listenerRegistry.push({ event: 'move', handler: getMapViewZips });
+
+                    let hoveredZipId = -1;
+                    let popupZip = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+                    let activeZipPopup = {};
+                    let popupZipCreated = false;
+
+                    const zipHover = (e) => {
+                        const zoom = map.getZoom();
+                        if (zoom <= 9 ) return;
+
+                        const newFeatureId = e.features[0].id;
+                        const feature = e.features[0];
+
+                        if (hoveredZipId !== newFeatureId) {
+                            if (hoveredZipId !== -1) {
+                                map.setFeatureState(
+                                    { source: 'zipGeojson', id: hoveredZipId },
+                                    { hover: false }
+                                );
+                            }
+
+                            map.setFeatureState(
+                                { source: 'zipGeojson', id: newFeatureId },
+                                { hover: true }
+                            );
+
+                            hoveredZipId = newFeatureId;
+                        }
+
+                        if (activeZipPopup[newFeatureId]) {
+                            while (!popupZipCreated) {}
+                            popupZip
+                            .setLngLat(e.lngLat) 
+                            return;
+                        }
+
+                        activeZipPopup[newFeatureId] = true;
+
+                        if (popupZipCreated) {
+                            activeZipPopup = {};
+                        }
+
+                        let popupContent = "<strong>zip: </strong>";
+                        popupContent += feature.properties.zip || 'Unknown';
+
+                        popupZip
+                            .setLngLat(e.lngLat)
+                            .setHTML(popupContent)
+                            .addTo(map)
+                            .addClassName('hover-popup');
+                            
+                        popupZipCreated = true;
+                        popupZip._container.id = 'zip hover';
+                    }
+
+                    map.on('mousemove', 'zip-fill', zipHover);
+                    listenerRegistry.push({ event: 'mousemove', layer: 'zip-fill', handler: zipHover });
+
+                    const zipLeave = (e) => {
+                        const zoom = map.getZoom();
+                        if (zoom <= 9) return;
+
+                        let popup = document.elementFromPoint(e.originalEvent.clientX, e.originalEvent.clientY);
+                        if (popup && popup.closest) {
+                            let popupBox = popup.closest('.mapboxgl-popup');
+                            if (popupBox) {   
+                            if (popupBox.id !== 'id') {
+                                map.setFeatureState(
+                                    { source: 'zipGeojson', id: hoveredZipId },
+                                    { hover: false }
+                                );
+
+                                activeZipPopup = {};
+                                popupZipCreated = false;
+                                hoveredZipId = -1;
+                                popupZip.remove();
+                                popupZip = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+                            }else {
+                                popupZip
+                                    .setLngLat(e.lngLat)
+                            }
+                                return;
+                            }
+                        }
+                        
+                        if (hoveredZipId !== -1) {
+                            activeZipPopup = {};
+                            popupZipCreated = false;
+                            popupZip.remove();
+                            popupZip = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+
+                            map.setFeatureState(
+                                { source: 'zipGeojson', id: hoveredZipId },
+                                { hover: false }
+                            );
+
+                            hoveredZipId = -1;
+                        }
+                    }
+
+                    map.on('mouseleave', 'zip-fill', zipLeave);
+                    listenerRegistry.push({ event: 'mouseleave', layer: 'zip-fill', handler: zipLeave });
+
+                    const zipZoom = () => {
+                        const zoom = map.getZoom();
+                        if (zoom < 9) {
+                            if (hoveredZipId !== -1) {
+                                map.setFeatureState(
+                                    { source: 'zipGeojson', id: hoveredZipId },
+                                    { hover: false }
+                                );
+                                hoveredZipId = -1;
+                            }
+
+                            popupZip.remove();
+                            popupZip = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+                            activeZipPopup = {};
+                            popupZipCreated = false;
+                            //zipLoadLock = 0;
+                        }else {
+                            getMapViewZips();
+                        }
+                    }
+
+                    map.on('zoom', zipZoom);
+                    listenerRegistry.push({ event: 'zoom', handler: zipZoom });
+
+                    map.on('zoom', updateCircleRadius);
+                    listenerRegistry.push({ event: 'zoom', handler: updateCircleRadius });
+
+                    const clusterMouseMove = () => {
+                        map.getCanvas().style.cursor = 'pointer';
+                    };
+
+                    map.on('mousemove', `${source}-clusters`, clusterMouseMove);
+                    listenerRegistry.push({ event: 'mousemove', layer: `${source}-clusters`, handler: clusterMouseMove });
+
+                    const clusterMouseLeave = () => {
+                        map.getCanvas().style.cursor = '';
+                    };
+
+                    map.on('mouseleave', `${source}-clusters`, clusterMouseLeave);
+                    listenerRegistry.push({ event: 'mouseleave', layer: `${source}-clusters`, handler: clusterMouseLeave });
+
+                    const pointMouseEnter = () => {
+                        const zoom = map.getZoom();
+                        if (zoom < 9) {
+                            return;
+                        }
+
+                        map.getCanvas().style.cursor = 'pointer';
+                    };
+
+                    map.on('mouseenter', `${source}-circle-layer`, pointMouseEnter);
+                    listenerRegistry.push({ event: 'mouseenter', layer: `${source}-circle-layer`, handler: pointMouseEnter });
+
+                    const pointMouseLeave = () => {
+                        const zoom = map.getZoom();
+                        if (zoom < 9) {
+                            return;
+                        }
+
+                        map.getCanvas().style.cursor = '';
+                    };
+
+                    map.on('mouseleave', `${source}-circle-layer`, pointMouseLeave);
+                    listenerRegistry.push({ event: 'mouseleave', layer: `${source}-circle-layer`, handler: pointMouseLeave });
+
+                    const orderedKeys = [
+                        "zip",
+                        "type",
+                        "country",
+                        "state",
+                        "county",
+                        "city",
+                        "dma_name",
+                        "dma_code",
+                        "latitude",
+                        "longitude",
+                        "population",
+                        "avg_population",
+                        "racial_white",
+                        "racial_black",
+                        "racial_hispanic",
+                        "racial_asian",
+                        "racial_native",
+                        "racial_pacific",
+                        "racial_multi",
+                        "racial_other",
+                        "males",
+                        "female",
+                        "pop_under_10",
+                        "pop_10_to_19",
+                        "pop_20_to_29",
+                        "pop_30_to_39",
+                        "pop_40_to_49",
+                        "pop_50_to_59",
+                        "pop_60_to_69",
+                        "pop_70_to_79",
+                        "pop_80_plus",
+                        "education_high",
+                        "education_bachelors",
+                        "education_graduate",
+                        "income_individual",
+                        "income_household",
+                        "population_in_poverty",
+                        "total_contribution", 
+                        //score: "score",
+                        //active_population: "active population",
+                        "engagement"  
+                    ];
+
+                    const zoomClusterClear = () => {
+                        const zoom = map.getZoom();
+                        if (zoom < 5) {
+                            popupsCluster.forEach(popup => popup.remove());
+                            popupsCluster = [];
+                        }
+                    };
+
+                    map.on('zoom', zoomClusterClear);
+                    listenerRegistry.push({ event: 'zoom', handler: zoomClusterClear });
+
+                    const clickCluster = (e) => {
+                        const clusterId = e.features[0].properties.cluster_id;
+                        let maxPoints = 400000;
+
+                        if (clickedClusters[clusterId]) {
+                            clickedClusters[clusterId].remove();
+                        }
+
+                        map.getSource(source).getClusterLeaves(clusterId, maxPoints, 0, (err, features) => {
+                            if (err) return;
+
+                            let total_weights = features.reduce((sum, feature) => sum + (feature.properties.total_contribution || 0), 0);
+                            total_weights = total_weights.toFixed(3);
+
+                            const popup = new mapboxgl.Popup({ className: 'popup-style-close-button',  closeButton: true, closeOnClick: false })
+                                .setLngLat(e.lngLat)
+                                .setHTML(`<strong>contribution:</strong> ${total_weights} <br>`)
+                                .addTo(map);
+                                
+                            popupsCluster.push(popup);
+                            clickedClusters[clusterId] = popup;
+                        });
+                    };
+
+                    map.on('click', `${source}-clusters`, clickCluster);
+                    listenerRegistry.push({ event: 'click', layer: `${source}-clusters`, handler: clickCluster });
+
+                    const clickClusterCleanup = (e) => {
+                        if (!map.queryRenderedFeatures(e.point, { layers: [`${source}-clusters`] }).length) {
+                            popupsCluster.forEach(popup => popup.remove());
+                            popupsCluster = [];
+                        }
+                    };
+
+                    map.on('click', clickClusterCleanup);
+                    listenerRegistry.push({ event: 'click', handler: clickClusterCleanup });
+
+                    const clickPoint = (e) => {
+                        const zoom = map.getZoom();
+                        if (zoom < 9) return;
+
+                        let pointID = e.features[0].properties.id;
+
+                        if (clickedPoints[pointID]) {
+                            clickedPoints[pointID].remove();
+                        }
+
+                        const properties = e.features[0].properties;
+                        let popupHTML = orderedKeys
+                            .filter(key => properties[key] !== undefined)
+                            .map(key => `<strong>${validAttributes[key]}:</strong> ${properties[key]}<br>`)
+                            .join('');
+
+                        const pointPosition = e.features[0].geometry.coordinates;
+                        const popup = new mapboxgl.Popup({ closeButton: true, closeOnClick: false })
+                            .setLngLat(pointPosition)
+                            .setHTML(popupHTML)
+                            .addTo(map);
+
+                        popupsPoints.push(popup);
+                        clickedPoints[pointID] = popup;
+                    };
+
+                    map.on('click', `${source}-circle-layer`, clickPoint);
+                    listenerRegistry.push({ event: 'click', layer: `${source}-circle-layer`, handler: clickPoint });
+
+                    const clickPointCleanup = (e) => {
+                        const features = map.queryRenderedFeatures(e.point, { layers: [`${source}-circle-layer`] });
+                        if (features.length === 0) {
+                            popupsPoints.forEach(popup => popup.remove());
+                            popupsPoints = [];
+                        }
+                    };
+
+                    map.on('click', clickPointCleanup);
+                    listenerRegistry.push({ event: 'click', handler: clickPointCleanup });
+
+                    document.getElementById('weight-checkbox').disabled = false;
+                    document.getElementById('density-checkbox').disabled = false;
+
+                    msg.textContent = "☑️ Load Complete";
+                    setTimeout(() => {
+                        msg.style.display = 'none';
+                    }, 1000);
+                    load = false;
+                } catch (error) {
+                    msg.textContent = "⚠️ Can't provide you  relevant data..."; 
+                    setTimeout(() => {
+                        msg.style.display = 'none';
+                    }, 2500);
+                    console.error("Error:", error);
+                    load = false;
+                    return;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

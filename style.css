@@ -1,0 +1,315 @@
+:root {
+    --ruler: 16px;
+    --color-bg: #EBECF0;
+    --color-shadow: #fcfcfc;
+    --color-white: #FFF;
+    --color-orange: #FFBF00;
+    --color-hover: #FBB117;
+    --color-active: #FFA500;
+}
+
+body, html {
+    background-color: var(--color-bg);
+    font-family: 'Montserrat', sans-serif;
+    letter-spacing: -0.2px;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+}
+
+#map {
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+}
+
+.mapboxgl-popup-content {
+    background-color: #fdfefe;
+    color: #131313;
+    font-size: 14px;
+    text-shadow: 2px 2px 4px rgba(64, 64, 64, 0.25);
+    padding: 1px 5px;
+    border: none;
+    border-radius: 9px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+    text-align: left;
+    max-height: 160px;
+    overflow-y: auto;
+    scrollbar-width: none;
+    margin-top: 2.5px;
+    margin-bottom: 2.5px;
+}
+
+.hover-popup .mapboxgl-popup-tip {
+    visibility: hidden;
+    margin-bottom: 25px;
+}
+
+.popup-style-close-button .mapboxgl-popup-content {
+    padding-right: 20px;
+}
+
+.stats-container {
+    position: absolute;
+    bottom: 40px;
+    left: 10px;
+    background-color: #393939;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    text-shadow: 1px 1px 1 rgba(64, 64, 64, 0.35);
+    padding: 10px 20px 20px 10px;
+    border-radius: 10.5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 2.5px;
+}
+
+.stat-item div {
+    text-align: center;
+    height: 12.25px;
+}
+
+hr {
+    background-color: #ecf0f1;
+    border-width: 0px;
+    border-radius: 10px;
+    height: 2.5px;
+}
+
+.mode-checkbox-container {
+    position: absolute;
+    display: flex;
+    bottom: 200px;
+    left: 10px;
+    flex-direction: column;
+    gap: 5px;
+    z-index: 2;
+}
+
+.slider-label {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    text-shadow: 1px 1px 1px rgba(248, 248, 248, 0.35);
+    font-weight: bold;
+    color: #ffffff;
+    cursor: default;
+    user-select: none;
+}
+
+.slider-label input {
+    display: none;
+}
+
+.slider-label .slider {
+    width: 32px;
+    height: 12.5px;
+    background-color: #5e5e5e;
+    border-radius: 10px;
+    position: relative;
+    margin-right: 8px;
+    transition: background-color 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.slider-label .slider::before {
+    content: '';
+    width: 9.5px;
+    height: 9.5px;
+    background-color: #ffffff;
+    border-radius: 50%;
+    position: absolute;
+    left: 1.5px;
+    top: 1.5px;
+    transition: left 0.1s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.slider-label input:checked + .slider {
+    background: linear-gradient(to right, #ffd22b, #FDBD01, #FFA500);
+}
+
+.slider-label input:checked + .slider::before {
+    left: 21px;
+}
+
+.slider-label .slider:hover {
+    background-color: #696969;
+}
+
+.slider-label input:checked + .slider:hover {
+    background: linear-gradient(to right, #FDBD01, #FFA500);
+}
+
+.error-message {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #5e5e5e;
+    color: #fbfbfb;
+    padding: 7px 7px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: bold;
+    box-shadow: 0 10px 12px rgba(71, 71, 71, 0.3);
+    display: none;
+    z-index: 3;
+}
+
+.input-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50%;
+    max-width: 400px;
+    min-width: 300px;
+    background: #333;
+    border-radius: 24px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    border: 2.5px solid #555;
+    transition: all 0.3s ease;
+    z-index: 3;
+    min-height: 60px;
+}
+
+.input-container:focus-within {
+    border-color: #ffee9f;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+    width: 80%;
+    max-width: 768px;
+    height: 120px;
+}
+
+.input-wrapper {
+    display: flex;
+    align-items: flex-end;
+    padding: 12px 12px;
+    gap: 12px;
+    height: 100%;
+}
+
+.input-container:focus-within .input-wrapper {
+    align-items: flex-start;
+    padding-top: 16px;
+}
+
+#promptInput {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 14.5px;
+    line-height: 1.5;
+    resize: none;
+    max-height: none;
+    min-height: 24px;
+    font-family: inherit;
+    background: transparent;
+    color: white;
+    overflow-y: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+#promptInput::-webkit-scrollbar {
+    display: none;
+}
+
+#promptInput::placeholder {
+    color: #888;
+}
+
+.input-container:focus-within #promptInput {
+    min-height: 80px;
+    max-height: 150px;
+}
+
+.send-button {
+    background: #FFBF00;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.send-button:hover:not(:disabled) {
+    background: #ffdf5d;
+}
+
+.send-button:active:not(:disabled) {
+    background: #FDBD01;
+}
+
+.send-button:disabled {
+    background: #666;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .input-container {
+        width: 70%;
+        min-width: 120px;
+    }
+
+    .input-container:focus-within {
+        width: 95%;
+    }
+}
+
+.clear-prompt-button {
+    position: absolute;
+    right: 8px;
+    bottom: 12px;
+    background: transparent;
+    border: none;
+    color: #888;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-family: inherit;
+    transition: opacity 0.2s ease;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.input-container:focus-within .clear-prompt-button {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.clear-prompt-button:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #aaa;
+}
