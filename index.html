@@ -21,16 +21,6 @@
             <span class="slider"></span>
             contribution
         </label>
-        <!-- <label class="slider-label">
-            <input type="radio" id="score-checkbox" name="mode" value="score">
-            <span class="slider"></span>
-            avg score;
-        </label>
-        <label class="slider-label">
-            <input type="radio" id="population-checkbox" name="mode" value="population">
-            <span class="slider"></span>
-            avg active population;
-        </label> -->
         <label class="slider-label">
             <input type="radio" id="density-checkbox" name="mode" value="density">
             <span class="slider"></span>
@@ -56,14 +46,6 @@
             <div>avg engagement:</div> 
             <div id="total-engagement">0</div>
         </div>
-        <!-- <div class="stat-item">
-            <div>avg active population;: </div> 
-            <div id="total-population">0</div>
-        </div>
-        <div class="stat-item">
-            <div>avg score: </div> 
-            <div id="total-score">0</div>
-        </div> -->
     </div>
 
      <div class="input-container">
@@ -164,8 +146,6 @@
         let listenerRegistry = [];
 
         document.getElementById('weight-checkbox').disabled = true;
-        //document.getElementById('score-checkbox').disabled = true;
-        //document.getElementById('population-checkbox').disabled = true;
         document.getElementById('density-checkbox').disabled = true;
 
         function loadStates(geojsonPath) {
@@ -270,12 +250,6 @@
                                 points.forEach(point => {
                                     if (turf.booleanPointInPolygon(turf.point(point.geo), statePolygon)) {
                                         switch (attribute) {
-                                        // case "score":
-                                        //     totalValue += parseFloat(point.score);
-                                        //     break;
-                                        // case "population":
-                                        //     totalValue += parseFloat(point.active_population);
-                                        //     break;
                                         case "engagement":
                                             totalValue += parseFloat(point.engagement_density);
                                             break;
@@ -302,12 +276,6 @@
                                     points.forEach(point => {
                                         if (turf.booleanPointInPolygon(turf.point(point.geo), statePolygon)) {
                                             switch (attribute) {
-                                            // case "score":
-                                            //     totalValue += parseFloat(point.score);
-                                            //     break;
-                                            // case "population":
-                                            //     totalValue += parseFloat(point.active_population);
-                                            //     break;
                                             case "engagement":
                                                 totalValue += parseFloat(point.engagement_density);
                                                 break;
@@ -367,62 +335,6 @@
                                 4.1, ["case", ["boolean", ["feature-state", "hover"], false], 0.6, 0]
                             ]);
                             paintStatesByWeight(false);
-                        // } else if (selectedMode === 'score') {
-                        //     map.setPaintProperty("state-fill", "fill-color", [
-                        //         "interpolate", ["linear"], ["coalesce", ["feature-state", "colorWeight"], 0],
-                        //         0, "#343434",
-                        //         0.1, "#ffeecf",
-                        //         0.2, "#ffdfa8",
-                        //         0.3, "#ffd77b",
-                        //         0.4, "#ffd77b",
-                        //         0.5, "#ffce5f",
-                        //         0.6, "#ffc642",
-                        //         0.7, "#ffbd26",
-                        //         0.8, "#ffb50c",
-                        //         0.9, "#ffa60b",
-                        //         1, "#ff970b",
-                        //         1.25, "#ff880b",
-                        //         1.5, "#ee7e00",
-                        //         1.75, "#ff6800",
-                        //         2, "#ff5500",
-                        //     ]);
-                        //     map.setPaintProperty("state-fill", "fill-opacity", [
-                        //         "interpolate", ["exponential", 10], ["zoom"],
-                        //         3, ["case", ["boolean", ["feature-state", "hover"], false], 0.75, 0.65],
-                        //         4.1, ["case", ["boolean", ["feature-state", "hover"], false], 0.6, 0]
-                        //     ]);
-                        //     paintStatesByAttrubute('score');
-                        // } else if (selectedMode === 'population') {
-                        //     map.setPaintProperty("state-fill", "fill-color", [
-                        //         "interpolate", ["linear"], ["coalesce", ["feature-state", "colorWeight"], 0],
-                        //         0, "#343434",
-                        //         100, "#ffeecf",
-                        //         1000, "#ffdfa8",
-                        //         2500, "#ffd77b",
-                        //         5000, "#ffd77b",
-                        //         7500, "#ffce5f",
-                        //         10000, "#ffc642",
-                        //         20000, "#ffbd26",
-                        //         30000, "#ffb50c",
-                        //         40000, "#ffa60b",
-                        //         50000, "#ff970b",
-                        //         60000, "#ff880b",
-                        //         70000, "#ee7e00",
-                        //         80000, "#ff6800",
-                        //         90000, "#ff5500",
-                        //         100000, "#ff4600",
-                        //         125000, "#e73f00",
-                        //         150000, "#d23a00",
-                        //         175000, "#bf3400",
-                        //         200000, "#ae2f00",
-                        //         500000, "#9b2a00"
-                        //     ]);
-                        //     map.setPaintProperty("state-fill", "fill-opacity", [
-                        //         "interpolate", ["exponential", 10], ["zoom"],
-                        //         3, ["case", ["boolean", ["feature-state", "hover"], false], 0.75, 0.65],
-                        //         4.1, ["case", ["boolean", ["feature-state", "hover"], false], 0.6, 0]
-                        //     ]);
-                        //     paintStatesByAttrubute('population');
                         } else if (selectedMode === 'density') {
                             map.setPaintProperty("state-fill", "fill-color", [
                                 "interpolate", ["linear"], ["coalesce", ["feature-state", "colorWeight"], 0],
@@ -454,8 +366,6 @@
 
                     const checkboxes = [
                         { id: 'weight-checkbox', selectMode: 'weight' },
-                        //{ id: 'score-checkbox', selectMode: 'score' },
-                        //{ id: 'population-checkbox', selectMode: 'population' },
                         { id: 'density-checkbox', selectMode: 'density' }
                     ];
 
@@ -606,8 +516,6 @@
                         popupContent += (US_STATES_MAP[feature.properties.s] + ' (' + feature.properties.s + ')') || 'Unknown';
                         let totalWeight = 0;
                         let totalEngagement = 0;
-                        //let totalScore = 0;
-                        //let totalPopulation = 0;
                         let totalPoints = 0;
 
                         if (stateGeos[newFeatureId].type === 'Polygon') {
@@ -628,12 +536,6 @@
                                     if (point.engagement_density) {
                                         totalEngagement += parseFloat(point.engagement_density);  
                                     }
-                                    //if (point.score) {
-                                    //    totalScore += parseFloat(point.score); 
-                                    //}
-                                    // if (point.active_population) {
-                                    //     totalPopulation += parseFloat(point.active_population); 
-                                    // }
 
                                     totalPoints++;
                                 }
@@ -657,12 +559,6 @@
                                         if (point.engagement_density) {
                                             totalEngagement += parseFloat(point.engagement_density);  
                                         }
-                                        // if (point.score) {
-                                        //     totalScore += parseFloat(point.score); 
-                                        // }
-                                        // if (point.active_population) {
-                                        //     totalPopulation += parseFloat(point.active_population); 
-                                        // }
 
                                         totalPoints++;
                                     }
@@ -676,9 +572,7 @@
                             if (totalWeight.toFixed(3) !== (totalWeight / totalPoints).toFixed(3)) {
                                 popupContent += `<br><strong>contribution ⬆⬇: </strong>${(totalWeight / totalPoints).toFixed(3)}`;
                             }
-                            //popupContent += `<br><strong>score ⬆⬇: </strong>${(totalScore / totalPoints).toFixed(3)}`;
                             popupContent += `<br><strong>engagement ⬆⬇: </strong>${(totalEngagement / totalPoints).toFixed(6)}`;
-                            //popupContent += `<br><strong>active population ⬆⬇: </strong>${(totalPopulation / totalPoints).toFixed(3)}`;
                         }
 
                         popupState
@@ -970,64 +864,6 @@
                                 0.5
                             ]);
                             paintCountiesByWeight(false);
-                        // } else if (selectedMode === 'score') {
-                        //     map.setPaintProperty("county-fill", "fill-color", [
-                        //         "interpolate", ["linear"], ["coalesce", ["feature-state", "colorWeight"], 0],
-                        //         0, "#343434",
-                        //         0.1, "#ffeecf",
-                        //         0.2, "#ffdfa8",
-                        //         0.3, "#ffd77b",
-                        //         0.4, "#ffd77b",
-                        //         0.5, "#ffce5f",
-                        //         0.6, "#ffc642",
-                        //         0.7, "#ffbd26",
-                        //         0.8, "#ffb50c",
-                        //         0.9, "#ffa60b",
-                        //         1, "#ff970b",
-                        //         1.25, "#ff880b",
-                        //         1.5, "#ee7e00",
-                        //         1.75, "#ff6800",
-                        //         2, "#ff5500",
-                        //     ]);
-                        //     map.setPaintProperty("county-fill", "fill-opacity", [
-                        //         "case",
-                        //         ["boolean", ["feature-state", "hover"], false],
-                        //         0.6,
-                        //         0.5
-                        //     ]);
-                        //     paintCountiesByAttribute('score');
-                        // } else if (selectedMode === 'population') {
-                        //     map.setPaintProperty("county-fill", "fill-color", [
-                        //         "interpolate", ["linear"], ["coalesce", ["feature-state", "colorWeight"], 0],
-                        //         0, "#343434",
-                        //         100, "#ffeecf",
-                        //         1000, "#ffdfa8",
-                        //         2500, "#ffd77b",
-                        //         5000, "#ffd77b",
-                        //         7500, "#ffce5f",
-                        //         10000, "#ffc642",
-                        //         20000, "#ffbd26",
-                        //         30000, "#ffb50c",
-                        //         40000, "#ffa60b",
-                        //         50000, "#ff970b",
-                        //         60000, "#ff880b",
-                        //         70000, "#ee7e00",
-                        //         80000, "#ff6800",
-                        //         90000, "#ff5500",
-                        //         100000, "#ff4600",
-                        //         125000, "#e73f00",
-                        //         150000, "#d23a00",
-                        //         175000, "#bf3400",
-                        //         200000, "#ae2f00",
-                        //         500000, "#9b2a00"
-                        //     ]);
-                        //     map.setPaintProperty("county-fill", "fill-opacity", [
-                        //         "case",
-                        //         ["boolean", ["feature-state", "hover"], false],
-                        //         0.6,
-                        //         0.5
-                        //     ]);
-                        //     paintCountiesByAttribute('population');
                         } else if (selectedMode === 'density') {
                             map.setPaintProperty("county-fill", "fill-color", [
                                 "interpolate", ["linear"], ["coalesce", ["feature-state", "colorWeight"], 0],
@@ -1060,8 +896,6 @@
 
                     const checkboxes = [
                         { id: 'weight-checkbox', selectMode: 'weight' },
-                        //{ id: 'score-checkbox', selectMode: 'score' },
-                        //{ id: 'population-checkbox', selectMode: 'population' },
                         { id: 'density-checkbox', selectMode: 'density' }
                     ];
 
@@ -1184,8 +1018,6 @@
                         popupContent += feature.properties.c || 'Unknown';
                         let totalWeight = 0;
                         let totalEngagement = 0;
-                        //let totalScore = 0;
-                        //let totalPopulation = 0;
                         let totalPoints = 0;
 
                         if (countyGeos[newFeatureId].type === 'Polygon') {
@@ -1206,12 +1038,6 @@
                                     if (point.engagement_density) {
                                         totalEngagement += parseFloat(point.engagement_density);  
                                     }
-                                    // if (point.score) {
-                                    //     totalScore += parseFloat(point.score); 
-                                    // }
-                                    // if (point.active_population) {
-                                    //     totalPopulation += parseFloat(point.active_population); 
-                                    // }
 
                                     totalPoints++;
                                 }
@@ -1235,12 +1061,6 @@
                                         if (point.engagement_density) {
                                             totalEngagement += parseFloat(point.engagement_density);  
                                         }
-                                        // if (point.score) {
-                                        //     totalScore += parseFloat(point.score); 
-                                        // }
-                                        // if (point.active_population) {
-                                        //     totalPopulation += parseFloat(point.active_population); 
-                                        // }
 
                                         totalPoints++;
                                     }
@@ -1254,9 +1074,8 @@
                             if (totalWeight.toFixed(3) !== (totalWeight / totalPoints).toFixed(3)) {
                                 popupContent += `<br><strong>contribution ⬆⬇: </strong>${(totalWeight / totalPoints).toFixed(3)}`;
                             }
-                            //popupContent += `<br><strong>score ⬆⬇: </strong>${(totalScore / totalPoints).toFixed(3)}`;
+
                             popupContent += `<br><strong>engagement ⬆⬇: </strong>${(totalEngagement / totalPoints).toFixed(6)}`;
-                            //popupContent += `<br><strong>active population ⬆⬇: </strong>${(totalPopulation / totalPoints).toFixed(3)}`;
                         }
 
                         popupCounty
@@ -1372,8 +1191,6 @@
             population_in_poverty: "in poverty (%)",
             type: "type",
             total_contribution: "contribution",
-            //score: "score",
-            //active_population: "active population",
             engagement: "engagement"
         };
         
@@ -1503,19 +1320,14 @@
                 }
             });
             listenerRegistry = [];
-            //existingSource = null;
             zipsGeoIndex = new RBush();
 
             geojsonData = null;
 
             document.getElementById('weight-checkbox').disabled = true;
-            //document.getElementById('score-checkbox').disabled = true;
-            //document.getElementById('population-checkbox').disabled = true;
             document.getElementById('density-checkbox').disabled = true;
 
             document.getElementById('weight-checkbox').checked = false;
-            //document.getElementById('score-checkbox').checked = false;
-            //document.getElementById('population-checkbox').checked = false;
             document.getElementById('density-checkbox').checked = false;
             
             map.setCenter([-95, 37]);
@@ -1563,9 +1375,7 @@
                     zip: feature.properties.zip,
                     geo: feature.geometry.coordinates,
                     weight: feature.properties.total_contribution,
-                    //score: feature.properties.score,
                     engagement_density: feature.properties.engagement,
-                    //active_population: feature.properties.active_population
                 };
                 
                 zipsGeoIndex.insert(item);
@@ -1577,8 +1387,6 @@
             document.getElementById('total-weight').textContent = weight;
             document.getElementById('avg-weight').textContent = avgWeight;
             document.getElementById('total-engagement').textContent = engagement;
-            //document.getElementById('total-score').textContent = score;
-            //document.getElementById('total-population').textContent = population;
         }
 
         document.getElementById('sendButton').addEventListener('mousedown', function (e) {
@@ -1644,8 +1452,6 @@
                     let totalZips = 0;
                     let totalWeight = 0;
                     let totalEngagement = 0;
-                    //let totalScore = 0;
-                    //let totalPopulation = 0;
 
                     geojson.features.forEach((feature, index) => {
                         const weight = parseFloat(feature.properties.total_contribution) || 0;
@@ -1654,8 +1460,6 @@
                         totalZips++;
                         totalWeight += weight;
                         totalEngagement += parseFloat(feature.properties.engagement) || 0;
-                        //totalScore += parseFloat(feature.properties.score) || 0;
-                        //totalPopulation += parseFloat(feature.properties.active_population) || 0;
                     });
 
                     setStats(
@@ -1663,8 +1467,6 @@
                         totalWeight.toFixed(2), 
                         (totalWeight / totalZips).toFixed(2),
                         (totalEngagement / totalZips).toFixed(6),
-                        //(totalScore/ totalZips).toFixed(3),
-                        //(totalPopulation/ totalZips).toFixed(0)
                     );
 
                     buildZipsGeoIndex();
@@ -2019,8 +1821,6 @@
 
                     const checkboxes = [
                         { id: 'weight-checkbox', selectMode: 'weight' },
-                        //{ id: 'score-checkbox', selectMode: 'score' },
-                        //{ id: 'population-checkbox', selectMode: 'population' },
                         { id: 'density-checkbox', selectMode: 'density' }
                     ];
 
@@ -2450,8 +2250,6 @@
                         "income_household",
                         "population_in_poverty",
                         "total_contribution", 
-                        //score: "score",
-                        //active_population: "active population",
                         "engagement"  
                     ];
 

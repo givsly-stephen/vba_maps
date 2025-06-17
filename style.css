@@ -35,7 +35,7 @@ body {
     color: #131313;
     font-size: 14px;
     text-shadow: 2px 2px 4px rgba(64, 64, 64, 0.25);
-    padding: 1px 5px;
+    padding: 2px 6px;
     border: none;
     border-radius: 9px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
@@ -58,14 +58,14 @@ body {
 
 .stats-container {
     position: absolute;
-    bottom: 40px;
-    left: 10px;
+    bottom: 5%;
+    left: 0.7%;
     background-color: #393939;
     color: white;
     font-size: 14px;
     font-weight: bold;
     text-shadow: 1px 1px 1 rgba(64, 64, 64, 0.35);
-    padding: 10px 20px 20px 10px;
+    padding: 0.8% 1.25% 1% 0.8%;
     border-radius: 10.5px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     z-index: 2;
@@ -83,7 +83,7 @@ body {
 
 .stat-item div {
     text-align: center;
-    height: 12.25px;
+    height: 5%;
 }
 
 hr {
@@ -96,10 +96,10 @@ hr {
 .mode-checkbox-container {
     position: absolute;
     display: flex;
-    bottom: 200px;
-    left: 10px;
+    bottom: 25%;
+    left: 0.7%;
     flex-direction: column;
-    gap: 5px;
+    gap: 10.5px;
     z-index: 2;
 }
 
@@ -164,7 +164,7 @@ hr {
 
 .error-message {
     position: absolute;
-    top: 10px;
+    top: 2%;
     left: 50%;
     transform: translateX(-50%);
     background-color: #5e5e5e;
@@ -180,40 +180,39 @@ hr {
 
 .input-container {
     position: fixed;
-    bottom: 20px;
+    bottom: 3%;
     left: 50%;
     transform: translateX(-50%);
-    width: 50%;
-    max-width: 400px;
-    min-width: 300px;
+    width: 30%;
+    max-width: 40%;
+    min-width: 30%;
     background: #333;
     border-radius: 24px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.5);
     border: 2.5px solid #555;
     transition: all 0.3s ease;
     z-index: 3;
-    min-height: 60px;
+    min-height: 7%;
 }
 
 .input-container:focus-within {
     border-color: #ffee9f;
     box-shadow: 0 4px 12px rgba(0,0,0,0.7);
-    width: 80%;
-    max-width: 768px;
-    height: 120px;
+    width: 40%;
+    max-width: 40%;
+    height: 15%;
 }
 
 .input-wrapper {
     display: flex;
     align-items: flex-end;
-    padding: 12px 12px;
-    gap: 12px;
+    padding: 2% 2%;
     height: 100%;
 }
 
 .input-container:focus-within .input-wrapper {
     align-items: flex-start;
-    padding-top: 16px;
+    padding-top: 2%;
 }
 
 #promptInput {
@@ -222,15 +221,16 @@ hr {
     outline: none;
     font-size: 14.5px;
     line-height: 1.5;
+    padding-right: 15px;
     resize: none;
     max-height: none;
-    min-height: 24px;
     font-family: inherit;
     background: transparent;
     color: white;
     overflow-y: auto;
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* Internet Explorer 10+ */
+    transition: height 0.3s ease;
 }
 
 #promptInput::-webkit-scrollbar {
@@ -242,16 +242,15 @@ hr {
 }
 
 .input-container:focus-within #promptInput {
-    min-height: 80px;
-    max-height: 150px;
+    height: 75%;
 }
 
 .send-button {
     background: #FFBF00;
     border: none;
     border-radius: 50%;
-    width: 36px;
-    height: 36px;
+    width: 37px;
+    height: 37px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -275,10 +274,10 @@ hr {
     cursor: not-allowed;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 50%) {
     .input-container {
-        width: 70%;
-        min-width: 120px;
+        width: 40%;
+        min-width: 40%;
     }
 
     .input-container:focus-within {
