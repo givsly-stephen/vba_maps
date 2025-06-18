@@ -56,6 +56,41 @@ body {
     padding-right: 20px;
 }
 
+.download-button-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    top: 1.5%;
+    left: 0.7%;
+    z-index: 1;
+}
+
+.download-button {
+    background-color: #FBB117;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(64, 64, 64, 0.35);
+    padding: 8px 8px;
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    text-align: center;
+}
+
+.download-button:hover {
+    background-color: var(--color-hover);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.download-button:active {
+    background-color: var(--color-active);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
 .stats-container {
     position: absolute;
     bottom: 5%;
@@ -205,7 +240,7 @@ hr {
 
 .input-wrapper {
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     padding: 2% 2%;
     height: 100%;
 }
@@ -228,8 +263,8 @@ hr {
     background: transparent;
     color: white;
     overflow-y: auto;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* Internet Explorer 10+ */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     transition: height 0.3s ease;
 }
 
@@ -294,7 +329,7 @@ hr {
     color: #888;
     font-size: 14px;
     cursor: pointer;
-    padding: 2px 6px;
+    padding: 2px 8px;
     border-radius: 6px;
     font-family: inherit;
     transition: opacity 0.2s ease;
