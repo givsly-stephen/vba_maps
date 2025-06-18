@@ -16,7 +16,7 @@
 </head>
 <body>
     <div class="download-button-container">
-        <button id="download-button" class="download-button">Download</button>
+        <button id="download-button" class="download-button" style="display:none;">Download Audience</button>
     </div>
 
     <div class="mode-checkbox-container">
@@ -247,8 +247,10 @@
             const downloadLink = document.createElement("a");
             const url = URL.createObjectURL(blob);
 
+            const downloadBtn = document.getElementById('download-button');
+
             downloadLink.href = url;
-            downloadLink.download = "report.csv";
+            downloadLink.download = downloadBtn.dataset.filename || "audience.csv";
             downloadLink.style.display = "none";
 
             document.body.appendChild(downloadLink);
@@ -1441,7 +1443,20 @@
                 body: JSON.stringify({ user: prompt })
             });
 
-            if (!response.ok) throw new Error("Failed to fetch data: " + response.statusText);
+            if (!response.ok) {
+                // parse the JSON error body
+                let errJson;
+                try {
+                    errJson = await response.json();
+                } catch {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                // throw an Error whose message is your server’s `error` field
+                throw new Error(errJson.error || `HTTP ${response.status}`);
+            }
+
+            const filename = response.headers.get('Filename'); 
+            console.log('server sent filename:', filename);
 
             const responseClone = response.clone();
             const reader = response.body.getReader();
@@ -1525,7 +1540,8 @@
                     type: "FeatureCollection",
                     features
                 },
-                csv: responseClone
+                csv: responseClone,
+                filename: filename,
             };
         }
 
@@ -1538,6 +1554,9 @@
 
                 if (load) return;
                 load = true;
+
+                const downloadBtn = document.getElementById('download-button');
+                downloadBtn.style.display = 'none';
 
                 const msg = document.getElementById('message');
                 msg.style.display = 'block';
@@ -1552,9 +1571,13 @@
 
                 const source = "bot"
                 existingSource = source;
-                
+
                 try {
-                    const {geojson, csv} = await loadData(prompt);
+                    const { geojson, csv, filename } = await loadData(prompt);
+                    lastCSV = csv;
+                    downloadBtn.style.display = 'block';  // show once data arrives
+                    downloadBtn.dataset.filename = filename;
+
                     geojsonData = geojson;
 
                     let totalZips = 0;
@@ -2084,7 +2107,10 @@
                             });
 
                             if (!response.ok) {
-                                throw new Error(`Server error: ${response.status}`);
+                                const errText = await response.text().catch(() => response.statusText);
+                                const error = new Error(`HTTP ${response.status}: ${errText}`);
+                                error.status = response.status;
+                                throw error;
                             }
 
                             const data = await response.json();
@@ -2457,13 +2483,26 @@
                     load = false;
                     lastCSV = csv;
                 } catch (error) {
-                    msg.textContent = "⚠️ Can't provide you  relevant data..."; 
-                    setTimeout(() => {
-                        msg.style.display = 'none';
-                    }, 2500);
-                    console.error("Error:", error);
+                    lastCSV = null;
+                    downloadBtn.style.display = 'none';
+
+                    // Show BOTH your API’s JSON error and network/HTTP errors
+                    let msgText;
+                    try {
+                        // if the server returned JSON { error, … }
+                        const errJson = JSON.parse(error.message.split('\n').slice(-1)[0]);
+                        msgText = errJson.error || error.message;
+                    } catch {
+                        msgText = error.message;
+                    }
+                    const msgEl = document.getElementById('message');
+                    msgEl.textContent = `⚠️ ${msgText}`;
+                    msgEl.style.display = 'block';
+
+                    // hide again after a short timeout
+                    setTimeout(() => msgEl.style.display = 'none', 5000);
+                } finally {
                     load = false;
-                    return;
                 }
             });
         });
