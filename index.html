@@ -261,6 +261,7 @@
 
         let hoveredStateId = -1;
         let popupState = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+
         let stateGeos = {};
         let activeStatePopup = {};
         let popupStateCreated = false;
@@ -1494,7 +1495,7 @@
                     const val = row[col];
                     if (val != null && val !== "") {
                         const floatVal = parseFloat(val);
-                        properties[attr] = (!isNaN(floatVal) && isFinite(floatVal) && attr !== "zip")
+                        properties[attr] = (!isNaN(floatVal) && isFinite(floatVal) && attr !== "zip" && floatVal < 1)
                             ? floatVal.toFixed(6)
                             : val;
                     } else {
@@ -2058,7 +2059,7 @@
                         }
                     }
 
-                    let storedGeoZips = {};
+                    let storedGeoZips = new Map();
 
                     function getMapViewZips() {
                         const zoom = map.getZoom();
@@ -2075,18 +2076,18 @@
                         };
 
                         const zips = [];
-                        const zipsMap = {};
+                        const zipsMap = new Map();
                         const geoZips = zipsGeoIndex.search(bbox);
 
                         geoZips.forEach(geo => {
-                            if (!storedGeoZips[geo.zip]) {
-                                storedGeoZips[geo.zip] = {};
-                                zipsMap[geo.zip] = {
+                            if (!storedGeoZips.has(geo.zip)) {
+                                storedGeoZips.set(geo.zip, {});
+                                zipsMap.set(geo.zip, {
                                     weight: geo.weight,
                                     density: geo.engagement_density,
                                     minX: geo.minX,
                                     minY: geo.minY
-                                }
+                                });
                                 zips.push(geo.zip);
                             }
                         });
@@ -2097,74 +2098,69 @@
                     }
 
                     async function fetchZipsToMapbox(zipList, zipsMap, bbox) {
-                        try {       
+                        try {
                             const response = await fetch("https://nodered.givslyga.com/zips", {
                                 method: "POST",
                                 headers: {
                                     "Content-Type": "application/xml"
                                 },
-                                body: JSON.stringify({ zips: zipList })
+                                body: JSON.stringify({ accuracy: "4", zips: zipList })
                             });
 
                             if (!response.ok) {
-                                const errText = await response.text().catch(() => response.statusText);
-                                const error = new Error(`HTTP ${response.status}: ${errText}`);
-                                error.status = response.status;
-                                throw error;
+                                storedGeoZips = new Map();
+                                throw new Error(`Server error: ${response.status}`);
                             }
 
                             const data = await response.json();
 
-                            const zips = [];
                             data.forEach(item => {
-                                const weight = parseFloat(zipsMap[item.zip].weight);
-                                const density = parseFloat(zipsMap[item.zip].density);
+                                const zipData = zipsMap.get(item.zip);
+                                if (zipData) {
+                                    const weight = parseFloat(zipData.weight);
+                                    const density = parseFloat(zipData.density);
 
-                                storedGeoZips[item.zip] = {
-                                    id: item.zip,
-                                    type: "Feature",
-                                    geometry: item.geojson_geom,
-                                    properties: { 
-                                        minX: zipsMap[item.zip].minX,
-                                        minY: zipsMap[item.zip].minY,
-                                        zip: item.zip,
-                                        total_contribution: weight,
-                                        density: density
-                                    }
-                                };
-
-                                zips.push(item.zip);
+                                    storedGeoZips.set(item.zip, {
+                                        id: item.zip,
+                                        type: "Feature",
+                                        geometry: item.geojson_geom,
+                                        properties: {
+                                            minX: zipData.minX,
+                                            minY: zipData.minY,
+                                            zip: item.zip,
+                                            total_contribution: weight,
+                                            density: density
+                                        }
+                                    });
+                                }
                             });
 
-                            if (zips.length >= 1000) {
-                                zips.forEach(zipCode => {
-                                    if (!storedGeoZips[zipCode].properties) {
-                                        return;
-                                    }
+                            if (storedGeoZips.size >= 1000) {
+                                const view = turf.bboxPolygon([
+                                    bbox.minX,
+                                    bbox.minY,
+                                    bbox.maxX,
+                                    bbox.maxY
+                                ]);
 
-                                    const zipdata = storedGeoZips[zipCode].properties;
+                                for (let [zipCode, feature] of storedGeoZips) {
+                                    const props = feature.properties;
+                                    if (!props || isNaN(props.minX) || isNaN(props.minY)) continue;
 
-                                    if (!isNaN(zipdata.minX) && !isNaN(zipdata.minY)) {
-                                        const view = turf.bboxPolygon([
-                                            bbox.minX,
-                                            bbox.minY,
-                                            bbox.maxX,
-                                            bbox.maxY
-                                        ]);
+                                    const point = turf.point([props.minX, props.minY]);
+                                    const inside = turf.booleanPointInPolygon(point, view);
 
-                                        const point = turf.point([zipdata.minX, zipdata.minY]);
-                                        const inside = turf.booleanPointInPolygon(point, view);
-
-                                        if (!inside) {
-                                            delete storedGeoZips[zipCode];
+                                    if (!inside) {
+                                        if (storedGeoZips.has(zipCode)) {
+                                            storedGeoZips.delete(zipCode);
                                         }
                                     }
-                                });
+                                }
                             }
-                            
+
                             const geojson = {
                                 type: "FeatureCollection",
-                                features: Object.values(storedGeoZips)
+                                features: Array.from(storedGeoZips.values())
                             };
 
                             const source = map.getSource('zipGeojson');
@@ -2180,7 +2176,7 @@
                     listenerRegistry.push({ event: 'move', handler: getMapViewZips });
 
                     let hoveredZipId = -1;
-                    let popupZip = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
+                    let popupZip = new mapboxgl.Popup({ closeButton: true, closeOnClick: false });
                     let activeZipPopup = {};
                     let popupZipCreated = false;
 
